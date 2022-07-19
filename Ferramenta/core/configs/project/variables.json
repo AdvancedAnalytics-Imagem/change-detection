@@ -1,0 +1,19 @@
+{
+    "debug": true,
+    "cloud_coverage_ratio": 20,
+    "target_area": "C:\\Users\\Matheus Caputo Pires\\OneDrive\\MCPTech\\Clientes\\Imagem\\Projetos\\CAESB\\Projeto\\change-detection\\InputData\\DMUD_PoligonalAnalise\\DMUD_PoligonalAnalise.shp",
+    "deteccao_de_mudancas": "C:\\Users\\Matheus Caputo Pires\\OneDrive\\MCPTech\\Clientes\\Imagem\\Projetos\\CAESB\\Projeto\\change-detection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca",
+    "classificacao_atual": "C:\\Users\\Matheus Caputo Pires\\OneDrive\\MCPTech\\Clientes\\Imagem\\Projetos\\CAESB\\Projeto\\change-detection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemAtual",
+    "classificacao_historica": "C:\\Users\\Matheus Caputo Pires\\OneDrive\\MCPTech\\Clientes\\Imagem\\Projetos\\CAESB\\Projeto\\change-detection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemHistorica",
+    "temp_db": null,
+    "temp_dir": null,
+    "downloads_storage": null,
+    "output_mosaic_dataset": "C:\\Users\\Matheus Caputo Pires\\OneDrive\\MCPTech\\Clientes\\Imagem\\Projetos\\CAESB\\Projeto\\change-detection\\Output_Images",
+    "output_images_location": "C:\\Users\\Matheus Caputo Pires\\OneDrive\\MCPTech\\Clientes\\Imagem\\Projetos\\CAESB\\Projeto\\change-detection\\Output_Images",
+    "sensor": [
+        "Sentinel-2"
+    ],
+    "download_images": true,
+    "classify_images": false,
+    "insert_on_database": false
+}

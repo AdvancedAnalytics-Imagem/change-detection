@@ -1,0 +1,14 @@
+{
+    "sentinel_api_auth": [
+        {
+            "user": "caesb",
+            "password": "C4esb.ESEG",
+            "url": "https://apihub.copernicus.eu/apihub"
+        },
+        {
+            "user": "caesb",
+            "password": "C4esb.ESEG",
+            "url": "https://scihub.copernicus.eu/dhus"
+        }
+    ]
+}
