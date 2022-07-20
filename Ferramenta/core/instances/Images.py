@@ -159,6 +159,10 @@ class Image(BasePath, BaseConfig):
         if mask and isinstance(mask, Feature):
             self.extract_by_mask(area_of_interest=mask)
 
+    @property
+    def is_inside_database(self):
+        return self.database is not None
+        
     @wrap_on_database_editing
     def mosaic_images(self, images_for_composition: list[str]) -> str:
         list_of_images_paths = []

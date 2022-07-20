@@ -32,15 +32,12 @@ def main():
                 output_path=variables.temp_db
             )
 
-            change_detection = ''
+            change_detection = Feature(path=historic_classification.intersects(intersecting_feature=current_classification))
 
             if variables.insert_on_database:
                 variables.classificacao_atual.append_dataset(origin=current_classification)
                 variables.classificacao_historica.append_dataset(origin=historic_classification)
                 variables.deteccao_de_mudancas.append_dataset(origin=change_detection)
-
-    pass
-    
 
 if __name__ == '__main__':
     main()

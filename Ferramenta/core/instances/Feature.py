@@ -21,6 +21,7 @@ from nbformat import ValidationError
 from arcpy.conversion import RasterToPolygon
 from .Database import Database, wrap_on_database_editing
 from .Editor import CursorManager
+from arcpy.analysis import Intersect
 
 _REQUIRED_OVERLAP_TYPE_FOR_DISTANCE: list[str] = [
     'WITHIN_A_DISTANCE',
@@ -387,4 +388,20 @@ class Feature(BaseFeature):
             max_vertices_per_feature=None
         )
         self.raster_field = raster_field
-        
+    
+    def intersects(self, intersecting_feature: str):
+        if not isinstance(intersecting_feature, str) and hasattr(intersecting_feature, 'full_path'):
+            intersecting_feature = intersecting_feature.full_path
+
+        intersect_priority = [
+            [intersecting_feature, 0],
+            [self.full_path, 1]
+        ]
+        output = os.path.join(self.temp_destination, 'intersection')
+        return Intersect(
+            in_features=intersect_priority,
+            out_feature_class=output,
+            join_attributes="ALL",
+            cluster_tolerance=None,
+            output_type="INPUT"
+        )[0]
