@@ -14,9 +14,16 @@ class Configs(BasePath):
 
     def __init__(self) -> None:
         self.load_variables()
-        if not self.temp_dir: self.temp_dir = Database(path=TEMP_DIR)
-        if not self.temp_db: self.temp_db = Database(path=TEMP_DB)
-        if not self.downloads_storage: self.downloads_storage = DOWNLOADS_DIR
+        if not self.temp_dir:
+            self.temp_dir = TEMP_DIR
+
+        if not self.temp_db:
+            self.temp_db = Database(path=TEMP_DB)
+        else:
+            self.temp_db = Database(path=self.temp_db)
+
+        if not self.downloads_storage:
+            self.downloads_storage = DOWNLOADS_DIR
 
         self.classificacao_atual = Feature(path=self.classificacao_atual, temp_destination=self.temp_db)
         self.classificacao_historica = Feature(path=self.classificacao_historica, temp_destination=self.temp_db)
