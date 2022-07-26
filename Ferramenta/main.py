@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/python
 # interpreter > C:\Users\Matheus Caputo Pires\AppData\Local\ESRI\conda\envs\arcgispro-py3-deeplearning
+import datetime
+from datetime import datetime
+
 from core.adapters.SateliteImagery import ImageAcquisition
 from core.configs.Configs import Configs
 from core.instances.Feature import Feature
@@ -35,9 +38,17 @@ def main():
             change_detection = Feature(path=historic_classification.intersects(intersecting_feature=current_classification))
 
             if variables.insert_on_database:
-                variables.classificacao_atual.append_dataset(origin=current_classification)
-                variables.classificacao_historica.append_dataset(origin=historic_classification)
-                variables.deteccao_de_mudancas.append_dataset(origin=change_detection)
+                variables.classificacao_atual.append_dataset(origin=current_classification, extra_constant_values={
+                    'DATA_A':satelite_images_service.current_image.date_created
+                })
+                variables.classificacao_historica.append_dataset(origin=historic_classification, extra_constant_values={
+                    'DATA_H':satelite_images_service.historic_image.date_created
+                })
+                variables.deteccao_de_mudancas.append_dataset(origin=change_detection, extra_constant_values={
+                    'DATA_A':satelite_images_service.current_image.date_created,
+                    'DATA_H':satelite_images_service.historic_image.date_created,
+                    'DATA_PROC':datetime.datetime.now()
+                })
 
 if __name__ == '__main__':
     main()

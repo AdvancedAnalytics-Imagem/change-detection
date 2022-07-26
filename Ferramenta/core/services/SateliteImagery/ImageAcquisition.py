@@ -40,7 +40,7 @@ class BaseImageAcquisitionService(BasePath, BaseConfig):
 class SentinelService(BaseImageAcquisitionService):
     _scene_min_coverage_threshold: float = 1.5
     _combined_scene_min_coverage_threshold: float = 40
-    _relativeorbitnumber_expected: list[int] = [81]
+    _relativeorbitnumber_expected: list = [81]
     _tiles_layer_name: str = 'grade_sentinel_brasil'
     classifier_name: str = 'sentinel_n2'
     _query_days_before_today: int = 30
@@ -49,7 +49,7 @@ class SentinelService(BaseImageAcquisitionService):
     tiles_layer: Feature = None
 
     selected_tyles: any = None
-    available_images: dict[list[SentinelImage]] = {}
+    available_images: dict = {}
     apis: list = []
     
     def __init__(self, *args, **kwargs) -> None:
@@ -87,11 +87,8 @@ class SentinelService(BaseImageAcquisitionService):
         if not api: return []
         # payload = {
         #     "area": area,
-        #     "area_relation": "Intersects",
         #     "producttype": "SLC",
         #     "platformname": "Sentinel-1",
-        #     "cloudcoverpercentage": (0, self._query_cloud_coverage),
-        #     "raw": f"filename:S2*",
         #     "date": (begin_date, end_date)
         # }
         payload = {
@@ -107,7 +104,7 @@ class SentinelService(BaseImageAcquisitionService):
         products.update(api.query(**payload))
         return api.to_geojson(products).features
 
-    def query_available_images(self, area_of_interest: Feature, max_date: datetime = None) -> dict[list[SentinelImage]]:
+    def query_available_images(self, area_of_interest: Feature, max_date: datetime = None) -> dict:
         if not max_date:
             max_date = self.today
         begin_date = max_date - timedelta(days=self._query_days_before_today)
@@ -138,7 +135,7 @@ class SentinelService(BaseImageAcquisitionService):
 
         return self.available_images
 
-    def _get_best_possile_images(self, list_of_images: list[SentinelImage], tile_name: str, max_date: datetime = None, min_date: datetime = None) -> list[SentinelImage]:
+    def _get_best_possile_images(self, list_of_images: list, tile_name: str, max_date: datetime = None, min_date: datetime = None) -> list:
         """Looks throught the identified images on the selected period for the current tile and isolates the best and most recent image based on a few rules
             Args:
                 list_of_images (list): List of images identified for the current tile
@@ -155,7 +152,7 @@ class SentinelService(BaseImageAcquisitionService):
 
         return self._combine_lower_coverage_tile_image(images=list_of_images, max_date=max_date, min_date=min_date)
 
-    def _combine_lower_coverage_tile_image(self, images: list[SentinelImage], max_date: datetime = None, min_date: datetime = None) -> list[SentinelImage]:
+    def _combine_lower_coverage_tile_image(self, images: list, max_date: datetime = None, min_date: datetime = None) -> list:
         filtered_list_of_images = self._filter_by_nodata_threshold(images=images, threshold=self._combined_scene_min_coverage_threshold)
         filtered_list_of_images = self._filter_by_cloud_coverage(images=filtered_list_of_images, threshold=self._max_cloud_coverage)
 
@@ -166,15 +163,15 @@ class SentinelService(BaseImageAcquisitionService):
         return [first_image, second_image]
 
     @staticmethod
-    def _filter_by_cloud_coverage(images: list[SentinelImage], threshold: int) -> list[SentinelImage]:
+    def _filter_by_cloud_coverage(images: list, threshold: int) -> list:
         return [image for image in images if image.cloud_coverage < threshold]
 
     @staticmethod
-    def _filter_by_nodata_threshold(images: list[SentinelImage], threshold: int) -> list[SentinelImage]:
+    def _filter_by_nodata_threshold(images: list, threshold: int) -> list:
         return [image for image in images if image.nodata_pixel_percentage < threshold]
     
     @staticmethod
-    def _get_most_recent_image(images: list[SentinelImage], max_date: datetime = None, min_date: datetime = None) -> SentinelImage:
+    def _get_most_recent_image(images: list, max_date: datetime = None, min_date: datetime = None) -> SentinelImage:
         most_recent_image = None
         for image in images:
             if (min_date and image.datetime < min_date) or (max_date and image.datetime >= max_date) or (most_recent_image and image.datetime <= most_recent_image.datetime):
@@ -182,7 +179,7 @@ class SentinelService(BaseImageAcquisitionService):
             most_recent_image = image
         return most_recent_image
 
-    def get_image(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, min_date: datetime = None) -> list[SentinelImage]:
+    def get_image(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, min_date: datetime = None) -> list:
         if not self.available_images:
             if not self.area_of_interest:
                 raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
