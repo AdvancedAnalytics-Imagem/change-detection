@@ -1,5 +1,7 @@
 *.zip
 *.gdb
+!*ServicesSupportData.gdb
+*.lock
 *.dlpk
 .vscode/settings.json
 .vscode/launch.json
