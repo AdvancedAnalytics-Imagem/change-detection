@@ -25,9 +25,11 @@ class Configs(BasePath):
         if not self.downloads_storage:
             self.downloads_storage = DOWNLOADS_DIR
 
-        self.classificacao_atual = Feature(path=self.classificacao_atual, temp_destination=self.temp_db)
-        self.classificacao_historica = Feature(path=self.classificacao_historica, temp_destination=self.temp_db)
-        self.deteccao_de_mudancas = Feature(path=self.deteccao_de_mudancas, temp_destination=self.temp_db)
+        if self.insert_on_database:
+            self.classificacao_atual = Feature(path=self.classificacao_atual, temp_destination=self.temp_db)
+            self.classificacao_historica = Feature(path=self.classificacao_historica, temp_destination=self.temp_db)
+            self.deteccao_de_mudancas = Feature(path=self.deteccao_de_mudancas, temp_destination=self.temp_db)
+            
         self.target_area = Feature(path=self.target_area, temp_destination=self.temp_db)
 
         self.output_images_location = Database(path=self.output_images_location)
