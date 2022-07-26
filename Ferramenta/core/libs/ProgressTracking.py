@@ -24,7 +24,7 @@ class ProgressTracker:
         elif current:
             self.current = current
         
-        if self.current_percentage > self._next_percentage or not self.current:
+        if not self.current or self.current_percentage > self._next_percentage:
             if self.current:
                 self.estimate_completion_time()
             self._next_percentage += 1
@@ -41,8 +41,9 @@ class ProgressTracker:
     
     @property
     def current_percentage(self) -> str:
-        if self.total:
-            return int((self.current/self.total)*self.percentage_base)
+        if not self.total:
+            return 0
+        return int((self.current/self.total)*self.percentage_base)
 
     def estimate_completion_time(self) -> None:
         elapsed_time = datetime.now() - self._start_time
