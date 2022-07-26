@@ -130,12 +130,12 @@ class BasePath:
         self.load_path_variable(path)
         self.full_path = os.path.join(self.path, self.name)
 
-    def load_path_variable(self, path: str, subsequent_folders: list[str] = []) -> str:
+    def load_path_variable(self, path: str, subsequent_folders: list = []) -> str:
         """Loads a path variable and guarantees it exists and is accessible
 
             Args:
                 path (str): Folder path string
-                subsequent_folders (list[str], optional): Next folders to be acessed. Defaults to [].
+                subsequent_folders (list, optional): Next folders to be acessed. Defaults to [].
 
             Raises:
                 FolderAccessError, 
@@ -169,14 +169,14 @@ class BasePath:
         return Exists(self.full_path)
         # raise UnexistingFeatureError(feature=self.full_path)
         
-    def get_files_by_extension(self, folder: str, extension: str = '.jp2', limit: int = 0) -> list[str]:
+    def get_files_by_extension(self, folder: str, extension: str = '.jp2', limit: int = 0) -> list:
         """List filed full path based on the desired extension
             Args:
                 folder (str): Base folder to search for files
                 extension (str, optional): File extension to be look after. Defaults to '.jp2'.
                 limit (int, optional): File name size limitation. Defaults to 0.
             Returns:
-                list[str]: List of encontered files
+                list: List of encontered files
         """        
         encountered_files = []
         if not os.path.exists(folder): return []
