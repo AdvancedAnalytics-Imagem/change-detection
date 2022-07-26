@@ -89,7 +89,7 @@ class SentinelImage(BaseConfig, BasePath):
     # ---- Funções para buscar informações do nodata_pixel_percentage ----
     
     @prevent_server_error
-    def download(self, filter: list[str], downloads_folder: str) -> dict:
+    def download(self, filter: list, downloads_folder: str) -> dict:
         return self.api.download(self.uuid, directory_path=downloads_folder, checksum=False, nodefilter=make_path_filter(filter))
 
     def download_image(self, image_database: Database, downloads_folder: str, output_name: str = '', delete_temp_files: bool = False):
@@ -145,7 +145,7 @@ class Image(BasePath, BaseConfig):
     database: Database = None
     base_images: list = []
 
-    def __init__(self, path: str, name: str = None, images_for_composition: list[SentinelImage] = [], mask: Feature = None, temp_destination: str or Database = None, *args, **kwargs):
+    def __init__(self, path: str, name: str = None, images_for_composition: list = [], mask: Feature = None, temp_destination: str or Database = None, *args, **kwargs):
         if temp_destination:
             if not isinstance(temp_destination, Database):
                 temp_destination = Database(temp_database)
@@ -164,7 +164,7 @@ class Image(BasePath, BaseConfig):
         return self.database is not None
         
     @wrap_on_database_editing
-    def mosaic_images(self, images_for_composition: list[str]) -> str:
+    def mosaic_images(self, images_for_composition: list) -> str:
         list_of_images_paths = []
         for image in images_for_composition:
             if not isinstance(image, str):

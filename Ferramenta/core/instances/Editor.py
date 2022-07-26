@@ -56,7 +56,7 @@ class CursorManager(BaseConfig):
         self.current_cursor = CurrentCursor(method=InsertCursor, **kwargs)
         return self.current_cursor.open_cursor()
 
-    def update_cursor(self, fields: list = ['*'], where_clause: str = None, spatial_reference: SpatialReference = None, explode_to_points: bool = False, sql_clause: tuple[str] = (None, None), datum_transformation: ListTransformations = None) -> dict:
+    def update_cursor(self, fields: list = ['*'], where_clause: str = None, spatial_reference: SpatialReference = None, explode_to_points: bool = False, sql_clause: tuple = (None, None), datum_transformation: ListTransformations = None) -> dict:
         self.refresh_editing_session()
         
         kwargs = {
@@ -72,7 +72,7 @@ class CursorManager(BaseConfig):
         self.current_cursor = CurrentCursor(method=UpdateCursor, **kwargs)
         return self.current_cursor.open_cursor()
 
-    def search_cursor(self, fields: list = ['*'], where_clause: str = None, spatial_reference: SpatialReference = None, explode_to_points: bool = False, sql_clause: tuple[str] = (None, None), datum_transformation: ListTransformations = None) -> dict:
+    def search_cursor(self, fields: list = ['*'], where_clause: str = None, spatial_reference: SpatialReference = None, explode_to_points: bool = False, sql_clause: tuple = (None, None), datum_transformation: ListTransformations = None) -> dict:
         kwargs = {
             'in_table':self.full_path,
             'field_names':fields,
