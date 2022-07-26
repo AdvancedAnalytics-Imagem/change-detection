@@ -3,6 +3,8 @@
 import json
 import os
 import time
+import datetime
+from datetime import datetime
 
 from arcpy import (CopyFeatures_management, Describe, ExecuteError, Exists,
                    FeatureClassToFeatureClass_conversion,
@@ -11,19 +13,21 @@ from arcpy import (CopyFeatures_management, Describe, ExecuteError, Exists,
                    SelectLayerByAttribute_management,
                    SelectLayerByLocation_management, SpatialReference,
                    TruncateTable_management)
+from arcpy.analysis import Intersect
 from arcpy.cartography import SimplifyLine, SimplifyPolygon
-from arcpy.da import Editor, InsertCursor, SearchCursor, UpdateCursor
-from arcpy.management import Delete
-from core.libs.Base import (BaseConfig, BasePath, ProgressTracker,
-                                   load_path_and_name)
-from core.libs.ErrorManager import MaxFailuresError, UnexistingFeatureError
-from nbformat import ValidationError
 from arcpy.conversion import RasterToPolygon
+from arcpy.da import Editor, InsertCursor, SearchCursor, UpdateCursor
+from arcpy.management import AddField, Delete
+from core.libs.Base import BaseConfig, BasePath, load_path_and_name
+from core.libs.Enums import FieldType
+from core.libs.ErrorManager import MaxFailuresError, UnexistingFeatureError
+from core.libs.ProgressTracking import ProgressTracker
+from nbformat import ValidationError
+
 from .Database import Database, wrap_on_database_editing
 from .Editor import CursorManager
-from arcpy.analysis import Intersect
 
-_REQUIRED_OVERLAP_TYPE_FOR_DISTANCE: list[str] = [
+_REQUIRED_OVERLAP_TYPE_FOR_DISTANCE = [
     'WITHIN_A_DISTANCE',
     'WITHIN_A_DISTANCE_GEODESIC',
     'WITHIN_A_DISTANCE_3D',
@@ -51,6 +55,28 @@ def retry_failed_attempts(wrapped_function):
         return _failed_ids
     
     return wrapper
+
+class FieldManager:
+    def get_field_name_by_value(self, field_value: any):
+        if isinstance(field_value, datetime):
+            return FieldType._date.value
+        if isinstance(field_value, str):
+            return FieldType._str.value
+        if isinstance(field_value, int):
+            return FieldType._short.value
+
+    def get_structure(self, field_type: str = '', field_value: any = None) -> dict:
+        if field_value:
+            field_type = self.get_field_name_by_value(field_value=field_value)
+        # field_type=field_type,
+        # field_precision=,
+        # field_scale=,
+        # field_length=,
+        # field_alias=,
+        # field_is_nullable=,
+        # field_is_required=,
+        # field_domain=
+        return {"field_type":field_type}
 
 class BaseFeature(BasePath, CursorManager):
     database: Database = None
@@ -99,7 +125,7 @@ class Feature(BaseFeature):
                 temp_destination = Database(temp_database)
             self.temp_destination = temp_destination
 
-        if raster:
+        if raster is not None:
             self.create_polygon_from_raster(raster=raster, path=path, name=name)
         super(Feature, self).__init__(path=path, name=name, *args, **kwargs)
         if self.exists:
@@ -249,10 +275,10 @@ class Feature(BaseFeature):
             
         return field_names
 
-    def iterate_feature(self, fields: list[str] = ['*'], where_clause: str = None, sql_clause: tuple = (None,None), format: str = 'tuple'):
+    def iterate_feature(self, fields: list = ['*'], where_clause: str = None, sql_clause: tuple = (None,None), format: str = 'tuple'):
         """Iterates a feature and returns lines as they are read, according to field structure
             Args:
-                fields (list[str], optional): Defaults to ['*'].
+                fields (list, optional): Defaults to ['*'].
                 where_clause (str, optional): Defaults to None.
                 sql_clause (tuple, optional): Defaults to (None,None).
                 format (str, optional): Cound be tuple, list or json. Defaults to 'tuple'.
@@ -265,13 +291,13 @@ class Feature(BaseFeature):
             for selected_feature in selected_features:
                 yield self.format_feature_field_structure(data=selected_feature, fields=fields, format=format)
 
-    def serialize_feature_selection(self, fields: list = ['*'], where_clause: str = '1=1', sql_clause: tuple = (None,None), top_rows: int = None, oid_in: list = None) -> list[list]:
+    def serialize_feature_selection(self, fields: list = ['*'], where_clause: str = '1=1', sql_clause: tuple = (None,None), top_rows: int = None, oid_in: list = None) -> list:
         """Return the rows as a list
             Args:
                 fields (list, optional): Desired Fields. Defaults to ['*'].
                 sql_clause (tuple, optional): Defaults to (None,None).
             Returns:
-                list[list]: list or rows
+                list: list or rows
         """
         def get_full_length_or_first(values=None):
             if values and isinstance(values, (tuple, list)) and len(values) == 1:
@@ -328,26 +354,58 @@ class Feature(BaseFeature):
 
         return True
 
-    def append_dataset(self, origin, where_clause: str = None) -> list:
-        current_feature_fields = self.get_field_names(get_id=False)
+    def look_for_missing_fields(self, fields: dict) -> dict:
+        """Returns the dict of the fields that exist or could be created on the current feature
+            Args:
+                fields (dict): Fields and field values to be added
+            Returns:
+                dict: Fields that exist on current feature
+        """
+        all_fields = self.get_field_names(get_shape=False)
+        field_names = fields.keys()
+
+        for field_name in field_names:
+            if field_name in all_fields:
+                continue
+            success = self.add_field(field_name=field_name, field_value=fields.get(field_name))
+            if not success:
+                fields.pop(field_name)
+        return fields
+            
+    def add_field(self, field_name: str, field_type: str = '', field_value: any = None) -> bool:
+        if not field_type and not field_value:
+            return False
+        
+        field_structure = FieldManager().get_structure(field_value=field_value)
+        try:
+            AddField(
+                in_table=self.full_path,
+                field_name=field_name,
+                **field_structure
+            )
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+
+    def append_dataset(self, origin, where_clause: str = None, extra_constant_values: dict = {}) -> list:
+        if extra_constant_values:
+            extra_constant_values = self.look_for_missing_fields(extra_constant_values)
+
+        fields = self.get_field_names()
         
         total_records = origin.row_count()
-        print(f'Anexando {total_records}')
-        if not self.batch_size:
-            self.batch_size = total_records
+        print(f'Anexando {total_records} de {origin.name} em {self.name}')
+        if not self.batch_size: self.batch_size = total_records
 
         self.progress_tracker.init_tracking(total=total_records, name='Append Data')
-        count = 0
 
         for row_data in origin.iterate_feature(where_clause=where_clause, format=dict):
-            self.insert_row(data=row_data, fields=current_feature_fields)
-            count += 1
-            self.progress_tracker.report_progress(current=count)
+            self.insert_row(data={**row_data, **extra_constant_values}, fields=fields)
+            self.progress_tracker.report_progress(add_progress=True)
             
-        self.insert_row(data=row_data, fields=current_feature_fields, _remaining_records=True)
-
-    def map_data_to_field_structure(self, data: dict, field_names: any = None) -> list:
-        return [data.get(field, None) for field in field_names]
+        self.insert_row(data=row_data, fields=fields, _remaining_records=True)
 
     @retry_failed_attempts
     def insert_row(self, data: list, fields: list, _remaining_records: bool = False):
@@ -397,7 +455,7 @@ class Feature(BaseFeature):
             [intersecting_feature, 0],
             [self.full_path, 1]
         ]
-        output = os.path.join(self.temp_destination, 'intersection')
+        output = os.path.join(self.temp_destination.full_path, 'intersection')
         return Intersect(
             in_features=intersect_priority,
             out_feature_class=output,
@@ -405,3 +463,7 @@ class Feature(BaseFeature):
             cluster_tolerance=None,
             output_type="INPUT"
         )[0]
+
+    @staticmethod
+    def map_data_to_field_structure(data: dict, field_names: any = None) -> list:
+        return [data.get(field, None) for field in field_names]
