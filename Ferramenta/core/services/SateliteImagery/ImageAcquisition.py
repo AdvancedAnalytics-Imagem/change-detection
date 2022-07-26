@@ -168,6 +168,7 @@ class SentinelService(BaseImageAcquisitionService):
 
     @staticmethod
     def _filter_by_nodata_threshold(images: list, threshold: int) -> list:
+        if not images: return []
         return [image for image in images if image.nodata_pixel_percentage < threshold]
     
     @staticmethod
@@ -190,7 +191,7 @@ class SentinelService(BaseImageAcquisitionService):
 
         if not best_available_image:
             print(f'Não existe imagem disponível para o tile {tile_name} no intervalo dos últimos {self._query_days_before_today} que se enquadre nos parâmetros de filtro especificados')
-            return
+            return []
 
         if not isinstance(best_available_image, list): best_available_image = [best_available_image]
         [image.download_image(image_database=self.images_database, downloads_folder=self.images_folder) for image in best_available_image]
