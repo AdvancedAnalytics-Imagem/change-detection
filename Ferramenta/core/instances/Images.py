@@ -133,17 +133,17 @@ class SentinelImage(BaseConfig, BasePath):
                 print(e)
 
 class Image(BasePath, BaseConfig):
-    _masked_prefix = 'Msk_'
-    _mosaic_prefix = 'Mos_'
-    _stretch_prefix = 'Stch_'
-    _copy_prefix = 'Copy_'
-    _classification_prefix = 'Clssif_'
-    temp_destination = 'IN_MEMORY'
-    processor_type = 'GPU'
+    _masked_prefix: str = 'Msk_'
+    _mosaic_prefix: str = 'Mos_'
+    _stretch_prefix: str = 'Stch_'
+    _copy_prefix: str = 'Copy_'
+    _classification_prefix: str = 'Clssif_'
+    temp_destination: str = 'IN_MEMORY'
+    processor_type: str = 'CPU'
     processing_date: datetime = datetime.now()
-    created_date: datetime = datetime.now()
+    date_created: datetime = datetime.now()
     database: Database = None
-    base_images: list[SentinelImage]
+    base_images: list = []
 
     def __init__(self, path: str, name: str = None, images_for_composition: list[SentinelImage] = [], mask: Feature = None, temp_destination: str or Database = None, *args, **kwargs):
         if temp_destination:
@@ -195,7 +195,7 @@ class Image(BasePath, BaseConfig):
 
     @wrap_on_database_editing
     def extract_by_mask(self, area_of_interest: Feature) -> str:
-        self.name = f'{self._masked_prefix}_{self.name}'
+        self.name = f'{self._masked_prefix}{self.name}'
         self.path = self.database.full_path
         if not Exists(os.path.join(self.path, self.name)):
             print(f'Extraindo máscara da imagem {self.full_path}')
@@ -212,7 +212,7 @@ class Image(BasePath, BaseConfig):
     
     @wrap_on_database_editing
     def stretch_image(self) -> str:
-        self.name = f'{self._stretch_prefix}_{self.name}'
+        self.name = f'{self._stretch_prefix}{self.name}'
         self.path = self.database.full_path
         if not Exists(os.path.join(self.path, self.name)):
             print(f'Aplicando Strech na Imagem {self.full_path}')
@@ -280,23 +280,24 @@ class Image(BasePath, BaseConfig):
 
     def classify(self, classifier: str, output_path: Database):
         print(f'Classificando a imagem {self.full_path}')
-        self.temp_destination.start_editing()
-        with EnvManager(processorType=self.processor_type):
-            try:
-                arguments="padding 70;batch_size 2;predict_background True;tile_size 256"
-                out_classified_raster = ClassifyPixelsUsingDeepLearning(
-                    in_raster=self.full_path,
-                    in_model_definition=classifier,
-                    arguments=arguments,
-                    processing_mode="PROCESS_AS_MOSAICKED_IMAGE",
-                    out_classified_folder=None
-                )
-                classified_raster_full_path = os.path.join(self.temp_destination.full_path, f'{self._classification_prefix}{self.name}')
-                out_classified_raster.save(classified_raster_full_path)
-            except Exception as e:
-                raise e
-        self.temp_destination.close_editing()
-
-        feature = Feature(path=f'{classified_raster_full_path}_polygon', raster=out_classified_raster, temp_destination=self.temp_destination)
+        classified_raster_full_path = os.path.join(self.temp_destination.full_path, f'{self._classification_prefix}{self.name}')
+        if not Exists(classified_raster_full_path):
+            self.temp_destination.start_editing()
+            with EnvManager(processorType=self.processor_type):
+                try:
+                    arguments="padding 70;batch_size 2;predict_background True;tile_size 256"
+                    out_classified_raster = ClassifyPixelsUsingDeepLearning(
+                        in_raster=self.full_path,
+                        in_model_definition=classifier,
+                        arguments=arguments,
+                        processing_mode="PROCESS_AS_MOSAICKED_IMAGE",
+                        out_classified_folder=None
+                    )
+                    out_classified_raster.save(classified_raster_full_path)
+                except Exception as e:
+                    raise e
+            self.temp_destination.close_editing()
+        self.processing_date = self.now
+        feature = Feature(path=f'{classified_raster_full_path}_polygon', raster=classified_raster_full_path, temp_destination=self.temp_destination)
         return feature
 
