@@ -57,12 +57,14 @@ class ImageAcquisition(BaseConfig):
             temp_destination=self.temp_destination
         )
 
-        #* Historic Image acquisition
-
         tiles_dates = list(current_images.keys())
         tiles_dates.sort()
         tiles_min_date = tiles_dates[0]
         tiles_max_date = tiles_dates[-1]
+
+        self.current_image.date_created = tiles_max_date
+
+        #* Historic Image acquisition
 
         historic_images = {}
         min_search_date = tiles_min_date - timedelta(days=30)
@@ -85,3 +87,6 @@ class ImageAcquisition(BaseConfig):
 
         hist_tiles_dates = list(historic_images.keys())
         hist_tiles_dates.sort()
+        hist_tiles_max_date = hist_tiles_dates[-1]
+
+        self.historic_image.date_created = hist_tiles_max_date
