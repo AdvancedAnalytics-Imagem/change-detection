@@ -8,12 +8,12 @@ from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.libs.Base import BasePath
 
-
 class Configs(BasePath):
     temp: str
 
     def __init__(self) -> None:
-        self.load_variables()
+        self.load_all_variables()
+
         if not self.temp_dir:
             self.temp_dir = TEMP_DIR
 
@@ -34,8 +34,8 @@ class Configs(BasePath):
 
         self.output_images_location = Database(path=self.output_images_location)
 
-        
-    def load_variables(self):
+
+    def load_all_variables(self):
         variables = {}
         files = self.load_config_files()
         for file in files:

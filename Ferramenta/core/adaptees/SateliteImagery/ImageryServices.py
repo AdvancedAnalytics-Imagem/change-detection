@@ -11,10 +11,11 @@ from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image, SentinelImage
 from core.libs.Base import (BaseConfig, BasePath, ProgressTracker,
-                                   prevent_server_error)
+                            prevent_server_error)
 from nbformat import ValidationError
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
+from core.ml_models.ImageClassifier import Sentinel2ImageClassifier
 
 
 class BaseImageAcquisitionService(BasePath, BaseConfig):
@@ -32,32 +33,21 @@ class BaseImageAcquisitionService(BasePath, BaseConfig):
         if not path.endswith('Downloaded_Images'): path = os.path.join(path, 'Downloaded_Images')
         self.images_folder = self.load_path_variable(path=path)
     
-    def get_ml_model(self, target: str = 'sentinel'):
-        list_of_models = self.get_files_by_extension(folder=ML_MODELS_DIR, extension='.dlpk')
-        target_files = [file for file in list_of_models if target in file]
-        return target_files[0]
 
-class SentinelService(BaseImageAcquisitionService):
+class Sentinel2(BaseImageAcquisitionService):
     _scene_min_coverage_threshold: float = 1.5
     _combined_scene_min_coverage_threshold: float = 40
-    _relativeorbitnumber_expected: list = [81]
     _tiles_layer_name: str = 'grade_sentinel_brasil'
-    classifier_name: str = 'sentinel_n2'
     _query_days_before_today: int = 30
-    _query_cloud_coverage: int = 40
-    _max_cloud_coverage: int = 20
-    tiles_layer: Feature = None
-
+    max_cloud_coverage: int = 20
     selected_tyles: any = None
     available_images: dict = {}
     apis: list = []
     
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-
         self.tiles_layer = Feature(path=self.base_gbd.full_path, name=self._tiles_layer_name)
         self.images_database = Database(path=os.path.dirname(self.images_folder), name='SENTINEL_IMAGES')
-
 
     def authenticate_api(self, credentials: list) -> None:
         if not isinstance(credentials, list):
@@ -67,7 +57,7 @@ class SentinelService(BaseImageAcquisitionService):
 
     @property    
     def ml_model(self):
-        return self.get_ml_model(target=self.classifier_name)
+        return Sentinel2ImageClassifier()
 
     def select_tiles(self, area_of_interest: Feature, where_clause: str = None) -> Feature:
         if where_clause:
@@ -96,7 +86,7 @@ class SentinelService(BaseImageAcquisitionService):
             "area_relation": "Intersects",
             "producttype": "S2MSI2A",
             "platformname": "Sentinel-2",
-            "cloudcoverpercentage": (0, self._query_cloud_coverage),
+            "cloudcoverpercentage": (0, self.max_cloud_coverage + 10),
             "raw": f"filename:S2*",
             "date": (begin_date, end_date)
         }
@@ -105,18 +95,14 @@ class SentinelService(BaseImageAcquisitionService):
         return api.to_geojson(products).features
 
     def query_available_images(self, area_of_interest: Feature, max_date: datetime = None) -> dict:
-        if not max_date:
-            max_date = self.today
+        if not max_date: max_date = self.today
         begin_date = max_date - timedelta(days=self._query_days_before_today)
         end_date = max_date + timedelta(days=1)
-
         aoi_geojson = area_of_interest.geojson_geometry()
         area = geojson_to_wkt(aoi_geojson)
-
+        print(f'Buscando por imagens disponíveis entre {begin_date} e {end_date} na área de interesse')
         for api in self.apis:
             identified_images = self._query_images(api=api, area=area, begin_date=begin_date, end_date=end_date)
-            self.progress_tracker.init_tracking(total=len(identified_images), name='Busca por Imagens')
-
             self.available_images = {}
             for image_feature in identified_images:
                 image_properties = image_feature.get('properties',{})
@@ -129,9 +115,7 @@ class SentinelService(BaseImageAcquisitionService):
                     properties=image_properties,
                     **image_properties
                 )
-
                 self.available_images[sentinel_image.tileid] = [*self.available_images.get(sentinel_image.tileid,[]), sentinel_image]
-                self.progress_tracker.report_progress(add_progress=True)
 
         return self.available_images
 
@@ -147,14 +131,14 @@ class SentinelService(BaseImageAcquisitionService):
         """
         filtered_list_of_images = self._filter_by_nodata_threshold(images=list_of_images, threshold=self._scene_min_coverage_threshold)
         if filtered_list_of_images:
-            filtered_list_of_images = self._filter_by_cloud_coverage(images=filtered_list_of_images, threshold=self._max_cloud_coverage)
+            filtered_list_of_images = self._filter_by_cloud_coverage(images=filtered_list_of_images, threshold=self.max_cloud_coverage)
             return self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, min_date=min_date)
 
         return self._combine_lower_coverage_tile_image(images=list_of_images, max_date=max_date, min_date=min_date)
 
     def _combine_lower_coverage_tile_image(self, images: list, max_date: datetime = None, min_date: datetime = None) -> list:
         filtered_list_of_images = self._filter_by_nodata_threshold(images=images, threshold=self._combined_scene_min_coverage_threshold)
-        filtered_list_of_images = self._filter_by_cloud_coverage(images=filtered_list_of_images, threshold=self._max_cloud_coverage)
+        filtered_list_of_images = self._filter_by_cloud_coverage(images=filtered_list_of_images, threshold=self.max_cloud_coverage)
 
         if not filtered_list_of_images or len(filtered_list_of_images) < 2: return
 
@@ -168,7 +152,8 @@ class SentinelService(BaseImageAcquisitionService):
 
     @staticmethod
     def _filter_by_nodata_threshold(images: list, threshold: int) -> list:
-        if not images: return []
+        if not images:
+            return []
         return [image for image in images if image.nodata_pixel_percentage < threshold]
     
     @staticmethod
@@ -194,12 +179,16 @@ class SentinelService(BaseImageAcquisitionService):
             return []
 
         if not isinstance(best_available_image, list): best_available_image = [best_available_image]
-        [image.download_image(image_database=self.images_database, downloads_folder=self.images_folder) for image in best_available_image]
+        [image.download_image(
+            image_database=self.images_database,
+            downloads_folder=self.images_folder,
+            output_name=f'{tile_name}_{self.today_str}'
+        ) for image in best_available_image]
 
         return best_available_image
 
 
-class CebersService(BaseImageAcquisitionService):
+class Cebers(BaseImageAcquisitionService):
     _tiles_layer_name = 'grade_cebers_brasil'
     
     def __init__(self) -> None:

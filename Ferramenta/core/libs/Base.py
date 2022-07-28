@@ -120,12 +120,11 @@ class BasePath:
 
     @load_path_and_name
     def __init__(self, path: str = None, name: str = None, *args, **kwargs):
-            
         if path and name:
             name = name.replace(' ','_').replace(':','')
             self.name = name
             self.load_base_path_variables(path=path)
-    
+
     def load_base_path_variables(self, path: str):
         self.load_path_variable(path)
         self.full_path = os.path.join(self.path, self.name)

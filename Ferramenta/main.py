@@ -7,6 +7,7 @@ from datetime import datetime
 from core.adapters.SateliteImagery import ImageAcquisition
 from core.configs.Configs import Configs
 from core.instances.Feature import Feature
+from core.instances.Images import Image
 
 
 def main():
@@ -14,14 +15,15 @@ def main():
 
     if variables.download_images:
         satelite_images_service = ImageAcquisition(
-            service='SENTINEL',
+            service='SENTINEL2',
             credentials=variables.sentinel_api_auth,
             downloads_folder=variables.downloads_storage,
             temp_destination=variables.temp_db
         )
         satelite_images_service.get_images(
             area_of_interest=variables.target_area,
-            results_output_location=variables.output_images_location
+            results_output_location=variables.output_images_location,
+            max_cloud_coverage=variables.max_cloud_coverage
         )
 
         if variables.classify_images:

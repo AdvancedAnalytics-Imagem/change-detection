@@ -5,14 +5,15 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from xml.etree import ElementTree as ET
 
-from arcpy import Exists, EnvManager
-from arcpy.management import CompositeBands, Delete, MosaicToNewRaster, CopyRaster
-from arcpy.sa import Stretch, ExtractByMask
+from arcpy import EnvManager, Exists
 from arcpy.ia import ClassifyPixelsUsingDeepLearning
+from arcpy.management import (CompositeBands, CopyRaster, Delete,
+                              MosaicToNewRaster)
+from arcpy.sa import ExtractByMask, Stretch
 from core._constants import *
 from core.instances.Database import Database, wrap_on_database_editing
 from core.libs.Base import (BaseConfig, BasePath, load_path_and_name,
-                                   prevent_server_error)
+                            prevent_server_error)
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
 from sentinelsat.exceptions import ServerError as SetinelServerError
@@ -22,55 +23,47 @@ from .Feature import Feature
 
 class SentinelImage(BaseConfig, BasePath):
     title: str = None
-    geometry: dict = None
     datetime: datetime = None
     date: date = None
     tileid: str = None
     properties: dict = None,
     uuid: str = ''
-    id: str = ''
     nodata_pixel_percentage_str: str = ''
-    relativeorbitnumber: int = 0
-    cloud_coverage: float = 0.0
 
     def __init__(self, api: any, *args, **kwargs):
         self.api = api
         self.__dict__.update(kwargs)
         self.nodata_pixel_percentage_str = ''
         self.split_title_data()
-
-    def get(self, property: str):
-        try:
-            return self.properties.get(property)
-        except Exception as e:
-            print(e)
-            return None
-
-    @property
-    def nodata_pixel_percentage(self):
-        if not self.nodata_pixel_percentage_str:
-            self.fetch_s2_qi_info()
-        if self.nodata_pixel_percentage_str:
-            try:
-                return float(self.nodata_pixel_percentage_str)
-            except Exception as e:
-                print(f'Não foi possível converter o valor de nodata {self.nodata_pixel_percentage_str} para decimal (float).\n{e}')
-        return 100
-
+        
     def split_title_data(self):
         title_parts = self.title.split('_')
         self.tileid = title_parts[5][1:]
         self.datetime = datetime.strptime(title_parts[6], format('%Y%m%dT%H%M%S'))
         self.date = self.datetime.date()
 
+    def get(self, property: str):
+        return self.properties.get(property)
+
+    @property
+    def cloud_coverage(self):
+        return self.cloudcoverpercentage*100
     # ---- Funções para buscar informações do nodata_pixel_percentage ----
+    @property
+    def nodata_pixel_percentage(self):
+        if not self.nodata_pixel_percentage_str: self.fetch_s2_qi_info()
+        if self.nodata_pixel_percentage_str:
+            try:
+                return float(self.nodata_pixel_percentage_str)
+            except Exception as e:
+                print(f'Não foi possível converter o valor de nodata {self.nodata_pixel_percentage_str} para decimal (float).\n{e}')
+        return 100
     def get_odata_file_url(self, path: str) -> str:
         odata_path = f"{self.api.api_url}odata/v1/Products('{self.uuid}')"
         for p in path.split("/"):
             odata_path += f"/Nodes('{p}')"
         odata_path += "/$value"
         return odata_path
-
     @prevent_server_error
     def fetch_s2_qi_info(self) -> None:
         if self.api.is_online(self.uuid):
@@ -93,7 +86,6 @@ class SentinelImage(BaseConfig, BasePath):
         return self.api.download(self.uuid, directory_path=downloads_folder, checksum=False, nodefilter=make_path_filter(filter))
 
     def download_image(self, image_database: Database, downloads_folder: str, output_name: str = '', delete_temp_files: bool = False):
-        print(f'Baixando bandas da cena {self.uuid}')
         filterB2 = "*_B02_10m*"
         filterB3 = "*_B03_10m*"
         filterB4 = "*_B04_10m*"
@@ -102,12 +94,8 @@ class SentinelImage(BaseConfig, BasePath):
         
         downloaded_images = []
         for filter in filterList:
-            try:
-                downloaded_image = self.download(filter=filter, downloads_folder=downloads_folder)
-            except Exception as e:
-                print(f'Erro ao baixar imagem.\n{e}')
-                continue
-            downloaded_images.append(downloaded_image)
+            downloaded_images.append(self.download(filter=filter, downloads_folder=downloads_folder))
+
         if not downloaded_images: return
         self.unzip_files(folder=downloads_folder)
 
@@ -288,7 +276,7 @@ class Image(BasePath, BaseConfig):
                     arguments="padding 70;batch_size 2;predict_background True;tile_size 256"
                     out_classified_raster = ClassifyPixelsUsingDeepLearning(
                         in_raster=self.full_path,
-                        in_model_definition=classifier,
+                        in_model_definition=classifier.model,
                         arguments=arguments,
                         processing_mode="PROCESS_AS_MOSAICKED_IMAGE",
                         out_classified_folder=None
@@ -299,5 +287,6 @@ class Image(BasePath, BaseConfig):
             self.temp_destination.close_editing()
         self.processing_date = self.now
         feature = Feature(path=f'{classified_raster_full_path}_polygon', raster=classified_raster_full_path, temp_destination=self.temp_destination)
+        feature.calculate_field(image_classifier=classifier)
         return feature
 

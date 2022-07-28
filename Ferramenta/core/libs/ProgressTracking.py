@@ -4,14 +4,14 @@ from datetime import datetime
 
 class ProgressTracker:
     _next_percentage: int = 0
-    _start_time: datetime = datetime.now()
-    percentage_base: int = 10
     estimated_completion_time: str = ''
+    percentage_base = 10
     current: int = 0
     total: int = 0
     name: str = ''
 
     def init_tracking(self, total: int, name: str) -> None:
+        self._start_time = datetime.now()
         self.current = 0
         self.total = int(total)
         self.name = name

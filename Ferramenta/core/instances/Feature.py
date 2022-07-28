@@ -6,6 +6,7 @@ import time
 import datetime
 from datetime import datetime
 
+from core.ml_models.ImageClassifier import BaseImageClassifier
 from arcpy import (CopyFeatures_management, Describe, ExecuteError, Exists,
                    FeatureClassToFeatureClass_conversion,
                    FeaturesToJSON_conversion, GetCount_management, GetMessages,
@@ -436,17 +437,20 @@ class Feature(BaseFeature):
             raise UnexistingFeatureError(feature=raster)
         
         full_path = os.path.join(path, name)
-
-        RasterToPolygon(
-            in_raster=raster,
-            out_polygon_features=full_path,
-            simplify="SIMPLIFY",
-            raster_field=raster_field,
-            create_multipart_features="SINGLE_OUTER_PART",
-            max_vertices_per_feature=None
-        )
+        if not Exists(full_path):
+            RasterToPolygon(
+                in_raster=raster,
+                out_polygon_features=full_path,
+                simplify="SIMPLIFY",
+                raster_field=raster_field,
+                create_multipart_features="SINGLE_OUTER_PART",
+                max_vertices_per_feature=None
+            )
         self.raster_field = raster_field
     
+    def calculate_field(self, image_classifier: BaseImageClassifier = None):
+        print('here')
+
     def intersects(self, intersecting_feature: str):
         if not isinstance(intersecting_feature, str) and hasattr(intersecting_feature, 'full_path'):
             intersecting_feature = intersecting_feature.full_path

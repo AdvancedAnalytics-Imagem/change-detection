@@ -4,11 +4,11 @@ from datetime import date, datetime, timedelta
 from enum import Enum, unique
 
 from core._constants import *
+from core.adaptees.SateliteImagery.ImageryServices import Cebers, Sentinel2
 from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.libs.Base import BaseConfig
-from core.services.SateliteImagery.ImageAcquisition import CebersService, SentinelService
 
 
 class ImageAcquisition(BaseConfig):
@@ -18,10 +18,10 @@ class ImageAcquisition(BaseConfig):
 
     @unique
     class Services(Enum):
-        SENTINEL = SentinelService
-        CYBERS = CebersService
+        SENTINEL2 = Sentinel2
+        CYBERS = Cebers
 
-    def __init__(self, service: str = 'SENTINEL', credentials: list = [], downloads_folder: str = None, temp_destination: str or Database = None) -> None:
+    def __init__(self, service: str = 'SENTINEL2', credentials: list = [], downloads_folder: str = None, temp_destination: str or Database = None) -> None:
         if temp_destination:
             if not isinstance(temp_destination, Database):
                 temp_destination = Database(temp_database)
@@ -33,18 +33,23 @@ class ImageAcquisition(BaseConfig):
     def set_downloaded_images_path(self, *args, **kwargs) -> None:
         self.service.set_downloaded_images_path(*args, **kwargs)
 
-    def get_images(self, area_of_interest: Feature, results_output_location: Database = None):
+    def get_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None):
+        if max_cloud_coverage:
+            self.service.max_cloud_coverage = max_cloud_coverage
+
         intersecting_tiles = self.service.get_selected_tiles_names(area_of_interest=area_of_interest)
 
         #* Current Image acquisition
 
         current_images = {}
         self.service.query_available_images(area_of_interest=area_of_interest)
+        self.progress_tracker.init_tracking(total=len(intersecting_tiles), name='Busca por Imagens Atuais')
+
         for tile in intersecting_tiles:
-            # if tile not in ['22LHH']: continue
             tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest)
             for tile_image in tile_images:
                 current_images[tile_image.datetime] = [*current_images.get(tile_image.datetime,[]), tile_image]
+                self.progress_tracker.report_progress(add_progress=True)
 
         composition_images = []
         [composition_images.extend(i) for i in current_images.values()]
@@ -69,10 +74,13 @@ class ImageAcquisition(BaseConfig):
         historic_images = {}
         min_search_date = tiles_min_date - timedelta(days=30)
         self.service.query_available_images(area_of_interest=area_of_interest, max_date=min_search_date)
+        self.progress_tracker.init_tracking(total=len(intersecting_tiles), name='Busca por Imagens Históricas')
+
         for tile in intersecting_tiles:
             tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest, max_date=min_search_date)
             for tile_image in tile_images:
                 historic_images[tile_image.datetime] = [*historic_images.get(tile_image.datetime,[]), tile_image]
+                self.progress_tracker.report_progress(add_progress=True)
         
         hist_composition_images = []
         [hist_composition_images.extend(i) for i in historic_images.values()]
