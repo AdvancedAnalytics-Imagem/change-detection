@@ -60,9 +60,12 @@ class BaseConfig:
     regular_sleep_time_seconds = 5
     progress_tracker: ProgressTracker = ProgressTracker()
     
-    def format_date_as_str(self, date: datetime, format: str = "%Y-%m-%dT%H:%M:%S"):
+    def format_date_as_str(self, current_date: datetime, return_format: str = "%Y-%m-%dT%H:%M:%S"):
         """Formats a datetime object on the format 1995/10/13T00:00:00"""
-        return datetime.strftime(date, format)
+        if isinstance(current_date, datetime):
+            return datetime.strftime(current_date, return_format)
+        if isinstance(current_date, date):
+            return datetime.strftime(current_date, return_format)
 
     @property
     def now(self):
@@ -78,7 +81,7 @@ class BaseConfig:
     
     @property
     def today_str(self):
-        return self.format_date_as_str(self.today, format='%Y%m%d')
+        return self.format_date_as_str(self.today, return_format='%Y%m%d')
 
     @load_path_and_name
     def unzip_file(self, path: str, name: str) -> str:

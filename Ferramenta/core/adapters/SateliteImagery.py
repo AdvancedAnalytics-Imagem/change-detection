@@ -38,25 +38,25 @@ class ImageAcquisition(BaseConfig):
             self.service.max_cloud_coverage = max_cloud_coverage
 
         intersecting_tiles = self.service.get_selected_tiles_names(area_of_interest=area_of_interest)
+        self.progress_tracker.init_tracking(total=len(intersecting_tiles)*2, name='Busca por Imagens')
 
         #* Current Image acquisition
 
         current_images = {}
         self.service.query_available_images(area_of_interest=area_of_interest)
-        self.progress_tracker.init_tracking(total=len(intersecting_tiles), name='Busca por Imagens Atuais')
 
         for tile in intersecting_tiles:
             tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest)
             for tile_image in tile_images:
                 current_images[tile_image.datetime] = [*current_images.get(tile_image.datetime,[]), tile_image]
-                self.progress_tracker.report_progress(add_progress=True)
+            self.progress_tracker.report_progress(add_progress=True)
 
         composition_images = []
         [composition_images.extend(i) for i in current_images.values()]
 
         self.current_image = Image(
             path=results_output_location.full_path,
-            name=f'Current_Image_{self.format_date_as_str(date=self.now, format="%Y%m%d")}',
+            name=f'Current_Image_{self.format_date_as_str(current_date=self.now, return_format="%Y%m%d")}',
             images_for_composition=composition_images,
             mask=area_of_interest,
             temp_destination=self.temp_destination
@@ -74,20 +74,19 @@ class ImageAcquisition(BaseConfig):
         historic_images = {}
         min_search_date = tiles_min_date - timedelta(days=30)
         self.service.query_available_images(area_of_interest=area_of_interest, max_date=min_search_date)
-        self.progress_tracker.init_tracking(total=len(intersecting_tiles), name='Busca por Imagens Históricas')
 
         for tile in intersecting_tiles:
             tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest, max_date=min_search_date)
             for tile_image in tile_images:
                 historic_images[tile_image.datetime] = [*historic_images.get(tile_image.datetime,[]), tile_image]
-                self.progress_tracker.report_progress(add_progress=True)
+            self.progress_tracker.report_progress(add_progress=True)
         
         hist_composition_images = []
         [hist_composition_images.extend(i) for i in historic_images.values()]
 
         self.historic_image = Image(
             path=results_output_location.full_path,
-            name=f'Historic_Image_{self.format_date_as_str(date=self.now, format="%Y%m%d")}',
+            name=f'Historic_Image_{self.format_date_as_str(current_date=self.now, return_format="%Y%m%d")}',
             images_for_composition=hist_composition_images,
             mask=area_of_interest,
             temp_destination=self.temp_destination

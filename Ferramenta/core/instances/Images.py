@@ -86,39 +86,27 @@ class SentinelImage(BaseConfig, BasePath):
         return self.api.download(self.uuid, directory_path=downloads_folder, checksum=False, nodefilter=make_path_filter(filter))
 
     def download_image(self, image_database: Database, downloads_folder: str, output_name: str = '', delete_temp_files: bool = False):
-        filterB2 = "*_B02_10m*"
-        filterB3 = "*_B03_10m*"
-        filterB4 = "*_B04_10m*"
-        filterB8 = "*_B08_10m*"
-        filterList = [filterB2, filterB3, filterB4, filterB8]
-        
-        downloaded_images = []
-        for filter in filterList:
-            downloaded_images.append(self.download(filter=filter, downloads_folder=downloads_folder))
+        self.full_path = os.path.join(image_database.full_path, f'{output_name}_{self.format_date_as_str(current_date=self.date, return_format="%Y%m%d")}')
+        images_folder = os.path.join(downloads_folder, self.filename)
 
-        if not downloaded_images: return
-        self.unzip_files(folder=downloads_folder)
+        if not Exists(self.full_path):
+            filterB2 = "*_B02_10m*"
+            filterB3 = "*_B03_10m*"
+            filterB4 = "*_B04_10m*"
+            filterB8 = "*_B08_10m*"
+            filterList = [filterB2, filterB3, filterB4, filterB8]
+            
+            downloaded_images = []
+            for filter in filterList:
+                downloaded_images.append(self.download(filter=filter, downloads_folder=downloads_folder))
+            if not downloaded_images: return
+            self.unzip_files(folder=downloads_folder)
 
-        images_folder = os.path.join(downloads_folder, os.path.basename(downloaded_image.get('node_path')))
+            image_bands = self.get_files_by_extension(folder=images_folder, extension='.jp2')
+            CompositeBands(";".join(image_bands), self.full_path)
 
-        image_bands = self.get_files_by_extension(folder=images_folder)
-        if not output_name:
-            output_name = os.path.basename(downloaded_image.get('title'))
-        try:
-            self.full_path = os.path.join(image_database.full_path, output_name)
-            if not Exists(self.full_path):
-                print(f'Composing bands - {output_name}')
-                CompositeBands(";".join(image_bands), self.full_path)
-        except Exception as e:
-            print(e)
-
-        if delete_temp_files:
-            try:
-                print(f"""  APAGANDO IMAGENS INTERMEDIÁRIAS""")
-                Delete(images_folder)
-                print(f"""  APAGADO COM SUCESSO!""")
-            except Exception as e:
-                print(e)
+        if Exists(images_folder):
+            Delete(images_folder)
 
 class Image(BasePath, BaseConfig):
     _masked_prefix: str = 'Msk_'
@@ -276,7 +264,7 @@ class Image(BasePath, BaseConfig):
                     arguments="padding 70;batch_size 2;predict_background True;tile_size 256"
                     out_classified_raster = ClassifyPixelsUsingDeepLearning(
                         in_raster=self.full_path,
-                        in_model_definition=classifier.model,
+                        in_model_definition=classifier.full_path,
                         arguments=arguments,
                         processing_mode="PROCESS_AS_MOSAICKED_IMAGE",
                         out_classified_folder=None

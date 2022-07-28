@@ -39,4 +39,3 @@ class Sentinel2ImageClassifier(BaseImageClassifier):
 
     def __init__(self):
         super().__init__(path=self.get_ml_model(target=self.ml_model_name))
-        print('here')

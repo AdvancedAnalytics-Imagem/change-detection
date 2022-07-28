@@ -182,7 +182,7 @@ class Sentinel2(BaseImageAcquisitionService):
         [image.download_image(
             image_database=self.images_database,
             downloads_folder=self.images_folder,
-            output_name=f'{tile_name}_{self.today_str}'
+            output_name=f'ComposedTile_{tile_name}'
         ) for image in best_available_image]
 
         return best_available_image
