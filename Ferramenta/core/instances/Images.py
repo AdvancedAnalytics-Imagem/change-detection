@@ -115,6 +115,7 @@ class Image(BasePath, BaseConfig):
     _stretch_prefix: str = 'Stch_'
     _copy_prefix: str = 'Copy_'
     _classification_prefix: str = 'Clssif_'
+    mosaic_dataset: MosaicDataset = None
     temp_destination: str = 'IN_MEMORY'
     processor_type: str = 'CPU'
     processing_date: datetime = datetime.now()
@@ -147,28 +148,30 @@ class Image(BasePath, BaseConfig):
         self.name = f'{self._mosaic_prefix}{self.name}'
         self.full_path = os.path.join(self.database.full_path, self.name)
         
-        if Exists(self.full_path):
-            return self.full_path
-
         if compose_as_single_image:
             self.mosaic_dataset = MosaicDataset(path=self.full_path, images_for_composition=list_of_images_paths)
             self.full_path = self.mosaic_dataset.full_path
-        else:
-            print(f'Criando Mosaico em {self.database.full_path}')
-            MosaicToNewRaster(
-                input_rasters=list_of_images_paths,
-                output_location=self.database.full_path,
-                raster_dataset_name_with_extension=self.name,
-                number_of_bands=4,
-                pixel_type='16_BIT_UNSIGNED',
-                cellsize=10,
-                mosaic_method='MAXIMUM',
-                mosaic_colormap_mode='MATCH'
-            )
+
+        if Exists(self.full_path):
+            return self.full_path
+
+        print(f'Criando Mosaico em {self.database.full_path}')
+        MosaicToNewRaster(
+            input_rasters=list_of_images_paths,
+            output_location=self.database.full_path,
+            raster_dataset_name_with_extension=self.name,
+            number_of_bands=4,
+            pixel_type='16_BIT_UNSIGNED',
+            cellsize=10,
+            mosaic_method='MAXIMUM',
+            mosaic_colormap_mode='MATCH'
+        )
         return self.full_path
 
     @wrap_on_database_editing
     def extract_by_mask(self, area_of_interest: Feature) -> str:
+        if self.mosaic_dataset: return self.full_path
+
         self.name = f'{self._masked_prefix}{self.name}'
         self.path = self.database.full_path
         if not Exists(os.path.join(self.path, self.name)):
