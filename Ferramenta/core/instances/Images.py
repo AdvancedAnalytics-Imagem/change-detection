@@ -26,7 +26,7 @@ class SentinelImage(BasePath, BaseConfig):
     datetime: datetime = None
     date: date = None
     tileid: str = None
-    properties: dict = None,
+    properties: dict = None
     uuid: str = ''
     nodata_pixel_percentage_str: str = ''
 
@@ -126,7 +126,7 @@ class Image(BasePath, BaseConfig):
     def __init__(self, path: str, name: str = None, images_for_composition: list = [], mask: Feature = None, temp_destination: str or Database = None, compose_as_single_image: bool = True, *args, **kwargs):
         if temp_destination:
             if not isinstance(temp_destination, Database):
-                temp_destination = Database(temp_database)
+                temp_destination = Database(temp_destination)
             self.temp_destination = temp_destination
         
         super(Image, self).__init__(path=path, name=name, *args, **kwargs)
