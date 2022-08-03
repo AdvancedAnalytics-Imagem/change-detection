@@ -6,7 +6,7 @@ from arcpy import Extent, ListTransformations, SpatialReference
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from core._constants import *
 from core.libs.Base import BaseConfig
-from .Database import Database
+from .Database import Database, wrap_on_database_editing
 from core.libs.ErrorManager import NotADatabase, SavingEditingSessionError
 
 # TODO Create transformation manager for insert cursor

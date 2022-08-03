@@ -65,3 +65,11 @@ class MaxFailuresError(Error):
         self.attempts = attempts
         self.message = f'O método {method} falhou {attempts} vezes consecutivas'
         super().__init__(self.message)
+
+class MosaicDatasetError(Error):
+    """Handles errors on Mosaic Datasets"""
+
+    def __init__(self, mosaic, error: Error = None, message: str = ''):
+        self.mosaic = mosaic
+        self.message = f'Erro ao processar mosaico {mosaic}.\n{message}\n{error}'
+        super().__init__(self.message)

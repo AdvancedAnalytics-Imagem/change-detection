@@ -16,7 +16,6 @@ class ProgressTracker:
         self.total = int(total)
         self.name = name
         self._next_percentage = 0
-        self.report_progress(0)
     
     def report_progress(self, current: int = 0, add_progress: bool = False) -> None:
         if add_progress:
@@ -29,7 +28,7 @@ class ProgressTracker:
                 self.estimate_completion_time()
             self._next_percentage += 1
             # print(f"{self.name} |{self.progress}{self.remaining_progress}| {self.estimated_completion_time}", end="\r")
-            print(f"{self.name} |{self.progress}{self.remaining_progress}| {self.estimated_completion_time}", end="\n")
+            print(f"{self.name} |{self.progress}{self.remaining_progress}| Estimativa de conclusão: {self.estimated_completion_time}", end="\n")
     
     @property
     def remaining_progress(self) -> str:

@@ -33,7 +33,7 @@ class ImageAcquisition(BaseConfig):
     def set_downloaded_images_path(self, *args, **kwargs) -> None:
         self.service.set_downloaded_images_path(*args, **kwargs)
 
-    def get_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None):
+    def get_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True):
         if max_cloud_coverage:
             self.service.max_cloud_coverage = max_cloud_coverage
 
@@ -58,6 +58,7 @@ class ImageAcquisition(BaseConfig):
             path=results_output_location.full_path,
             name=f'Current_Image_{self.format_date_as_str(current_date=self.now, return_format="%Y%m%d")}',
             images_for_composition=composition_images,
+            compose_as_single_image=compose_as_single_image,
             mask=area_of_interest,
             temp_destination=self.temp_destination
         )
@@ -88,6 +89,7 @@ class ImageAcquisition(BaseConfig):
             path=results_output_location.full_path,
             name=f'Historic_Image_{self.format_date_as_str(current_date=self.now, return_format="%Y%m%d")}',
             images_for_composition=hist_composition_images,
+            compose_as_single_image=compose_as_single_image,
             mask=area_of_interest,
             temp_destination=self.temp_destination
         )

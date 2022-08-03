@@ -166,6 +166,17 @@ class BasePath:
         self.path = path
         return path
 
+    @staticmethod
+    def get_list_of_valid_paths(items) -> list:
+        valid_paths = []
+        for item in items:
+            path = item
+            if hasattr(item, 'full_path'):
+                path = item.full_path
+            if Exists(path):
+                valid_paths.append(path)
+        return valid_paths
+        
     @property
     def exists(self):
         return Exists(self.full_path)

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/python
 import os
-from dataclasses import dataclass
 from datetime import date, datetime
 from xml.etree import ElementTree as ET
 
@@ -12,6 +11,7 @@ from arcpy.management import (CompositeBands, CopyRaster, Delete,
 from arcpy.sa import ExtractByMask, Stretch
 from core._constants import *
 from core.instances.Database import Database, wrap_on_database_editing
+from core.instances.MosaicDataset import MosaicDataset
 from core.libs.Base import (BaseConfig, BasePath, load_path_and_name,
                             prevent_server_error)
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
@@ -21,7 +21,7 @@ from sentinelsat.exceptions import ServerError as SetinelServerError
 from .Feature import Feature
 
 
-class SentinelImage(BaseConfig, BasePath):
+class SentinelImage(BasePath, BaseConfig):
     title: str = None
     datetime: datetime = None
     date: date = None
@@ -35,7 +35,7 @@ class SentinelImage(BaseConfig, BasePath):
         self.__dict__.update(kwargs)
         self.nodata_pixel_percentage_str = ''
         self.split_title_data()
-        
+
     def split_title_data(self):
         title_parts = self.title.split('_')
         self.tileid = title_parts[5][1:]
@@ -48,6 +48,7 @@ class SentinelImage(BaseConfig, BasePath):
     @property
     def cloud_coverage(self):
         return self.cloudcoverpercentage*100
+
     # ---- Funções para buscar informações do nodata_pixel_percentage ----
     @property
     def nodata_pixel_percentage(self):
@@ -121,7 +122,7 @@ class Image(BasePath, BaseConfig):
     database: Database = None
     base_images: list = []
 
-    def __init__(self, path: str, name: str = None, images_for_composition: list = [], mask: Feature = None, temp_destination: str or Database = None, *args, **kwargs):
+    def __init__(self, path: str, name: str = None, images_for_composition: list = [], mask: Feature = None, temp_destination: str or Database = None, compose_as_single_image: bool = True, *args, **kwargs):
         if temp_destination:
             if not isinstance(temp_destination, Database):
                 temp_destination = Database(temp_database)
@@ -131,29 +132,28 @@ class Image(BasePath, BaseConfig):
         self.database = Database(path=path, create=True)
         self.base_images = images_for_composition
         if images_for_composition:
-            self.mosaic_images(images_for_composition=images_for_composition)
+            self.mosaic_images(images_for_composition=images_for_composition, compose_as_single_image=compose_as_single_image)
         if mask and isinstance(mask, Feature):
             self.extract_by_mask(area_of_interest=mask)
 
     @property
     def is_inside_database(self):
         return self.database is not None
-        
+    
     @wrap_on_database_editing
-    def mosaic_images(self, images_for_composition: list) -> str:
-        list_of_images_paths = []
-        for image in images_for_composition:
-            if not isinstance(image, str):
-                if hasattr(image, 'full_path'):
-                    path = image.full_path
-            else:
-                path = image
-
-            if Exists(path):
-                list_of_images_paths.append(path)
+    def mosaic_images(self, images_for_composition: list, compose_as_single_image: bool) -> str:
+        list_of_images_paths = self.get_list_of_valid_paths(items=images_for_composition)
 
         self.name = f'{self._mosaic_prefix}{self.name}'
-        if not Exists(os.path.join(self.database.full_path, self.name)):
+        self.full_path = os.path.join(self.database.full_path, self.name)
+        
+        if Exists(self.full_path):
+            return self.full_path
+
+        if compose_as_single_image:
+            self.mosaic_dataset = MosaicDataset(path=self.full_path, images_for_composition=list_of_images_paths)
+            self.full_path = self.mosaic_dataset.full_path
+        else:
             print(f'Criando Mosaico em {self.database.full_path}')
             MosaicToNewRaster(
                 input_rasters=list_of_images_paths,
@@ -165,8 +165,6 @@ class Image(BasePath, BaseConfig):
                 mosaic_method='MAXIMUM',
                 mosaic_colormap_mode='MATCH'
             )
-
-        self.full_path = os.path.join(self.database.full_path, self.name)
         return self.full_path
 
     @wrap_on_database_editing
@@ -275,6 +273,9 @@ class Image(BasePath, BaseConfig):
             self.temp_destination.close_editing()
         self.processing_date = self.now
         feature = Feature(path=f'{classified_raster_full_path}_polygon', raster=classified_raster_full_path, temp_destination=self.temp_destination)
-        feature.calculate_field(image_classifier=classifier)
+        feature.calculate_field(
+            image_classifier=classifier,
+            field_name=classifier.class_field
+        )
         return feature
 

@@ -1,31 +1,30 @@
 # -*- encoding: utf-8 -*-
 #!/usr/bin/python
+import datetime
 import json
 import os
 import time
-import datetime
 from datetime import datetime
 
-from core.ml_models.ImageClassifier import BaseImageClassifier
-from arcpy import (CopyFeatures_management, Describe, ExecuteError, Exists,
+from arcpy import (CopyFeatures_management, Describe, Exists,
                    FeatureClassToFeatureClass_conversion,
-                   FeaturesToJSON_conversion, GetCount_management, GetMessages,
-                   ListFields, Project_management, RepairGeometry_management,
+                   FeaturesToJSON_conversion, GetCount_management, ListFields,
+                   Project_management, RepairGeometry_management,
                    SelectLayerByAttribute_management,
                    SelectLayerByLocation_management, SpatialReference,
                    TruncateTable_management)
 from arcpy.analysis import Intersect
 from arcpy.cartography import SimplifyLine, SimplifyPolygon
 from arcpy.conversion import RasterToPolygon
-from arcpy.da import Editor, InsertCursor, SearchCursor, UpdateCursor
-from arcpy.management import AddField, Delete
-from core.libs.Base import BaseConfig, BasePath, load_path_and_name
+from arcpy.da import SearchCursor
+from arcpy.management import AddField, CalculateField, Delete
+from core.libs.Base import BasePath, load_path_and_name
 from core.libs.Enums import FieldType
 from core.libs.ErrorManager import MaxFailuresError, UnexistingFeatureError
-from core.libs.ProgressTracking import ProgressTracker
+from core.ml_models.ImageClassifier import BaseImageClassifier
 from nbformat import ValidationError
 
-from .Database import Database, wrap_on_database_editing
+from .Database import Database, wrap_on_database_editing, BaseDatabasePath
 from .Editor import CursorManager
 
 _REQUIRED_OVERLAP_TYPE_FOR_DISTANCE = [
@@ -58,56 +57,31 @@ def retry_failed_attempts(wrapped_function):
     return wrapper
 
 class FieldManager:
-    def get_field_name_by_value(self, field_value: any):
-        if isinstance(field_value, datetime):
+    def get_field_type_by_value(self, field_value: any):
+        if isinstance(field_value, datetime) or field_value == datetime:
             return FieldType._date.value
-        if isinstance(field_value, str):
+        if isinstance(field_value, str) or field_value == str:
             return FieldType._str.value
-        if isinstance(field_value, int):
+        if isinstance(field_value, int) or field_value == int:
             return FieldType._short.value
 
     def get_structure(self, field_type: str = '', field_value: any = None) -> dict:
+        """Gets field structure based on type or value
+            Args:
+                field_type (str, optional): Field type if known. Defaults to ''.
+                field_value (any, optional): Value or data type. Defaults to None.
+            Returns:
+                dict: Field Structure to be used for field creation
+                Needs to be added:
+                field_precision,field_scale,field_length,field_alias,field_is_nullable,field_is_required,field_domain
+        """
         if field_value:
-            field_type = self.get_field_name_by_value(field_value=field_value)
-        # field_type=field_type,
-        # field_precision=,
-        # field_scale=,
-        # field_length=,
-        # field_alias=,
-        # field_is_nullable=,
-        # field_is_required=,
-        # field_domain=
+            field_type = self.get_field_type_by_value(field_value=field_value)
         return {"field_type":field_type}
 
-class BaseFeature(BasePath, CursorManager):
-    database: Database = None
-    temp_destination = 'IN_MEMORY'
-
+class BaseFeature(BaseDatabasePath, CursorManager):
     def __init__(self, path: str, name: str, *args, **kwargs):
-        super(BaseFeature, self).__init__(path=path, name=name, *args, **kwargs)
-        self.load_feature_variable(path=path, name=name)
-
-    @load_path_and_name
-    def load_feature_variable(self, path: str, name: str = None):
-        """Loads a feature variable and guarantees it exists and, if in a GDB, if that GDB exists
-
-            Args:
-                path (str, optional): Path to the feature. Defaults to None.
-                name (str): feature name
-
-            Raises:
-                UnexistingFeatureError
-
-            Returns:
-                self
-        """
-        if self.path != 'IN_MEMORY':
-            if '.sde' in path or '.gdb' in path:
-                self.database = Database(path=path)
-                self.path = self.database.full_path
-        
-        self.full_path = os.path.join(self.path, self.name)
-
+        super().__init__(path=path, name=name, *args, **kwargs)
 
 class Feature(BaseFeature):
     _fields: list = []
@@ -128,7 +102,9 @@ class Feature(BaseFeature):
 
         if raster is not None:
             self.create_polygon_from_raster(raster=raster, path=path, name=name)
-        super(Feature, self).__init__(path=path, name=name, *args, **kwargs)
+
+        super().__init__(path=path, name=name, *args, **kwargs)
+
         if self.exists:
             description = Describe(self.full_path)
             self.geometry_type = description.shapeType if hasattr(description, 'ShapeType') else None
@@ -145,10 +121,6 @@ class Feature(BaseFeature):
     @property
     def is_table(self):
         return not self.geometry_type
-
-    @property
-    def is_inside_database(self):
-        return self.database is not None
 
     @property
     def field_names(self):
@@ -240,7 +212,6 @@ class Feature(BaseFeature):
         feature_name = self.get_unique_name(path=self.temp_destination, name=os.path.basename(self.name))
         return CopyFeatures_management(selected_features, os.path.join(self.temp_destination, feature_name))[0]
 
-    
     def format_feature_field_structure(self, data: list, fields: list = [], format: str = tuple):
         """Formats data according to feature object
             Args:
@@ -359,6 +330,7 @@ class Feature(BaseFeature):
         """Returns the dict of the fields that exist or could be created on the current feature
             Args:
                 fields (dict): Fields and field values to be added
+                {field_name:field_value}
             Returns:
                 dict: Fields that exist on current feature
         """
@@ -374,7 +346,7 @@ class Feature(BaseFeature):
         return fields
             
     def add_field(self, field_name: str, field_type: str = '', field_value: any = None) -> bool:
-        if not field_type and not field_value:
+        if not field_type and field_value is None:
             return False
         
         field_structure = FieldManager().get_structure(field_value=field_value)
@@ -388,7 +360,6 @@ class Feature(BaseFeature):
         except Exception as e:
             print(e)
             return False
-
 
     def append_dataset(self, origin, where_clause: str = None, extra_constant_values: dict = {}) -> list:
         if extra_constant_values:
@@ -448,9 +419,25 @@ class Feature(BaseFeature):
             )
         self.raster_field = raster_field
     
-    def calculate_field(self, image_classifier: BaseImageClassifier = None):
-        print('here')
-
+    def calculate_field(self, field_name: str, expression: str = None, code_block: str = None, field_value: any = str, expression_type: str = "PYTHON3", image_classifier: BaseImageClassifier = None):
+        if image_classifier is not None:
+            self.look_for_missing_fields(fields={image_classifier.class_field:str})
+            for classified_class in image_classifier.Classes:
+                with self.update_cursor(
+                    fields=image_classifier.class_field,
+                    where_clause=f'gridcode = {classified_class.value.value}') as cursor:
+                    for row in cursor:
+                        row[0] = classified_class.value.label
+                        cursor.updateRow(row)
+        if expression:
+            CalculateField(
+                in_table=self.full_path,
+                field=field_name,
+                expression=expression,
+                expression_type=expression_type,
+                code_block=code_block,
+                field_type=FieldManager().get_field_type_by_value(field_value=field_value)
+            )
     def intersects(self, intersecting_feature: str):
         if not isinstance(intersecting_feature, str) and hasattr(intersecting_feature, 'full_path'):
             intersecting_feature = intersecting_feature.full_path

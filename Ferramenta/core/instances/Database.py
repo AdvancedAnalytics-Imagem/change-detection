@@ -92,7 +92,7 @@ class SessionManager(BasePath, BaseConfig):
     def refresh_session(self):
         self.close_editing()
         self.start_editing()
-    
+
 
 class Database(SessionManager):
     feature_dataset : str = ''
@@ -184,3 +184,36 @@ def wrap_on_database_editing(wrapped_function):
         return result
     
     return editor_wrapper
+
+class BaseDatabasePath(BasePath):
+    database: Database = None
+    temp_destination = 'IN_MEMORY'
+
+    def __init__(self, path: str, name: str, *args, **kwargs):
+        super().__init__(path=path, name=name, *args, **kwargs)
+        self.load_database_path_variable(path=path, name=name)
+
+    @property
+    def is_inside_database(self):
+        return self.database is not None
+        
+    @load_path_and_name
+    def load_database_path_variable(self, path: str, name: str = None):
+        """Loads a feature variable and guarantees it exists and, if in a GDB, if that GDB exists
+
+            Args:
+                path (str, optional): Path to the feature. Defaults to None.
+                name (str): feature name
+
+            Raises:
+                UnexistingFeatureError
+
+            Returns:
+                self
+        """
+        if self.path != 'IN_MEMORY':
+            if '.sde' in path or '.gdb' in path:
+                self.database = Database(path=path)
+                self.path = self.database.full_path
+        
+        self.full_path = os.path.join(self.path, self.name)

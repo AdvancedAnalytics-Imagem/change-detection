@@ -13,9 +13,7 @@
     "temp_db": "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\temp.gdb",
     "temp_dir": "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\temp",
     "downloads_storage": "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\downloads",
-    "sensor": [
-        "Sentinel-2"
-    ],
+    "sensor": "SENTINEL2",
     "multithread": true,
     "delete_temp_files": true
 }

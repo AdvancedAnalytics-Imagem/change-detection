@@ -6,6 +6,11 @@ from enum import Enum, unique
 from core._constants import *
 from core.libs.Base import BasePath
 
+class ExtendedEnum(Enum):
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c.value, cls))
+
 
 class ClassAttribute:
     def __init__(self, value: int, label: str):
@@ -17,18 +22,26 @@ class ClassAttribute:
 
 class BaseImageClassifier(BasePath):
     ml_model_extension = '.dlpk'
+    ml_model_name = ''
+    class_field = 'CLASS'
+
+    class Classes(ExtendedEnum):
+        pass
     
     def get_ml_model(self, target: str):
         list_of_models = self.get_files_by_extension(folder=ML_MODELS_DIR, extension=self.ml_model_extension)
         target_files = [file for file in list_of_models if target in file]
         return target_files[0]
 
+    @property
+    def ids(self):
+        return [id for id in self.Classes]
+
 class Sentinel2ImageClassifier(BaseImageClassifier):
     ml_model_name = 'sentinel_n2'
     class_field = 'CLASS'
 
-    @unique
-    class Classes(Enum):
+    class Classes(ExtendedEnum):
         AREA_ANTROPICA = ClassAttribute(60, "Área Antrópicas Não Agrícolas")
         AREA_CAMPESTRE = ClassAttribute(10, "Campestres")
         CULTURA_PERENE = ClassAttribute(20, "Cultura Permanente")
