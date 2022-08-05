@@ -4,14 +4,17 @@
 import datetime
 from datetime import datetime
 
+from core._logs import *
 from core.adapters.SateliteImagery import ImageAcquisition
 from core.configs.Configs import Configs
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 
+aprint(message='Iniciando Execução - v1.03', progress=True)
 variables = Configs()
 
 def get_images():
+    aprint(message='Iniciando Aquisição de Imagens', progress=True)
     images = ImageAcquisition(
         service=variables.sensor,
         credentials=variables.sentinel_api_auth,
@@ -28,6 +31,7 @@ def get_images():
 
 
 def classify_image(image = None, ml_model = None):
+    aprint(message='Classificando Imagens', progress=True)
     if not image or not ml_model: return
     classification = image.classify(
         classifier=ml_model,
@@ -36,6 +40,7 @@ def classify_image(image = None, ml_model = None):
     return classification
 
 def detect_changes(current, historic):
+    aprint(message='Detectando Mudanças Imagens', progress=True)
     change_detection = Feature(path=historic.intersects(intersecting_feature=current))
     change_detection.calculate_field(
         field_name="DIFF",
@@ -70,6 +75,7 @@ def main():
         change_detection = detect_changes(current=current_classification, historic=historic_classification)
 
     if variables.insert_on_database:
+        aprint(message='Exportando resultados', progress=True)
         variables.classificacao_atual.append_dataset(origin=current_classification, extra_constant_values={
             'DATA':images.current_image.date_created,
             'DATA_PROC':datetime.datetime.now(),

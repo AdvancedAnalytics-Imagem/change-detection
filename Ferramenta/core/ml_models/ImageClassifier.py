@@ -11,7 +11,6 @@ class ExtendedEnum(Enum):
     def list(cls):
         return list(map(lambda c: c.value, cls))
 
-
 class ClassAttribute:
     def __init__(self, value: int, label: str):
         self.value = value
