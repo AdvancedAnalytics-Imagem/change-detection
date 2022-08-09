@@ -10,7 +10,7 @@ from core.configs.Configs import Configs
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 
-aprint(message='Iniciando Execução - v1.03', progress=True)
+aprint(message='Iniciando Execução - v1.09', level=LogLevels.INFO)
 variables = Configs()
 
 def get_images():
@@ -18,15 +18,15 @@ def get_images():
     images = ImageAcquisition(
         service=variables.sensor,
         credentials=variables.sentinel_api_auth,
-        downloads_folder=variables.downloads_storage,
+        downloads_folder=variables.download_storage,
         temp_destination=variables.temp_db
     )
     images.get_images(
         area_of_interest=variables.target_area,
         results_output_location=variables.output_images_location,
-        max_cloud_coverage=variables.max_cloud_coverage
+        max_cloud_coverage=variables.max_cloud_coverage,
+        compose_as_single_image=variables.mosaic_tiles # Caso negativo, os tiles não serão mosaicados em uma única imagem, isto impossibilita o append em um Mosaic Dataset
     )
-
     return images
 
 
@@ -35,7 +35,9 @@ def classify_image(image = None, ml_model = None):
     if not image or not ml_model: return
     classification = image.classify(
         classifier=ml_model,
-        output_path=variables.temp_db
+        output_path=variables.temp_db,
+        arguments=variables.classification_arguments,
+        processor_type=variables.classification_processor
     )
     return classification
 
@@ -76,24 +78,29 @@ def main():
 
     if variables.insert_on_database:
         aprint(message='Exportando resultados', progress=True)
+
+        output_mosaic_dataset_current.add_images(images.current_image)
+        output_mosaic_dataset_historic.add_images(images.historic_image)
+        
+        tile_names = ', '.join(images.service.tile_names)
         variables.classificacao_atual.append_dataset(origin=current_classification, extra_constant_values={
             'DATA':images.current_image.date_created,
             'DATA_PROC':datetime.datetime.now(),
             'SENSOR':variables.sensor,
-            'TILES':', '.join(images.tile_names)
+            'TILES':tile_names
         })
         variables.classificacao_historica.append_dataset(origin=historic_classification, extra_constant_values={
             'DATA':images.historic_image.date_created,
             'DATA_PROC':datetime.datetime.now(),
             'SENSOR':variables.sensor,
-            'TILES':', '.join(images.tile_names)
+            'TILES':tile_names
         })
         variables.deteccao_de_mudancas.append_dataset(origin=change_detection, extra_constant_values={
             'DATA_A':images.current_image.date_created,
             'DATA_H':images.historic_image.date_created,
             'DATA_PROC':datetime.datetime.now(),
             'SENSOR':variables.sensor,
-            'TILES':', '.join(images.tile_names)
+            'TILES':tile_names
         })
 
 if __name__ == '__main__':

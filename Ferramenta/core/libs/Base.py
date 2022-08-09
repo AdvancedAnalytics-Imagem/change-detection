@@ -6,6 +6,7 @@ import time
 from datetime import date, datetime, timedelta
 from zipfile import ZipFile
 
+from arcpy.management import Delete
 from arcpy import Exists
 from core.libs.ProgressTracking import ProgressTracker
 from core._constants import *
@@ -34,6 +35,21 @@ def load_path_and_name(wrapped):
                         kwargs['path'] = os.path.dirname(name)
         return wrapped(*args, **kwargs)
     
+    return wrapper
+
+def delete_source_files(wrapped):
+
+    def wrapper(self, *args, **kwargs):
+        source = None
+        if self.full_path and Exists(self.full_path):
+            source = self.full_path
+        response = wrapped(self, *args, **kwargs)
+
+        if source and Exists(source) and (not hasattr(self, 'delete_source') or self.delete_source):
+            if source != response:
+                Delete(source)
+        return response
+
     return wrapper
 
 def prevent_server_error(wrapped_function):
@@ -134,15 +150,11 @@ class BasePath:
 
     def load_path_variable(self, path: str, subsequent_folders: list = []) -> str:
         """Loads a path variable and guarantees it exists and is accessible
-
             Args:
                 path (str): Folder path string
                 subsequent_folders (list, optional): Next folders to be acessed. Defaults to [].
-
             Raises:
-                FolderAccessError, 
                 FolderAccessError
-
             Returns:
                 str: Compiled folder path string
         """

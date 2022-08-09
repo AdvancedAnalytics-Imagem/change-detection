@@ -1,6 +1,5 @@
 # -*- encoding: utf-8 -*-
 #!/usr/bin/python
-from enum import Enum, unique
 
 from arcpy import Extent, ListTransformations, SpatialReference
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor

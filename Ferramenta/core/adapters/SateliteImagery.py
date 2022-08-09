@@ -34,6 +34,14 @@ class ImageAcquisition(BaseConfig):
         self.service.set_downloaded_images_path(*args, **kwargs)
 
     def get_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True):
+        """Busca as imagens históricas e 
+
+        Args:
+            area_of_interest (Feature): _description_
+            results_output_location (Database, optional): _description_. Defaults to None.
+            max_cloud_coverage (int, optional): _description_. Defaults to None.
+            compose_as_single_image (bool, optional): _description_. Defaults to True.
+        """
         if max_cloud_coverage:
             self.service.max_cloud_coverage = max_cloud_coverage
 

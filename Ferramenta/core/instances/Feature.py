@@ -79,11 +79,8 @@ class FieldManager:
             field_type = self.get_field_type_by_value(field_value=field_value)
         return {"field_type":field_type}
 
-class BaseFeature(BaseDatabasePath, CursorManager):
-    def __init__(self, path: str, name: str, *args, **kwargs):
-        super().__init__(path=path, name=name, *args, **kwargs)
 
-class Feature(BaseFeature):
+class Feature(BaseDatabasePath, CursorManager):
     _fields: list = []
     _failed_ids: list = []
     _current_batch: list = []
@@ -111,7 +108,10 @@ class Feature(BaseFeature):
             self.OIDField = description.OIDFieldName if hasattr(description, 'OIDFieldName') else 'Id'
             self.shape_field = description.shapeFieldName if hasattr(description, 'shapeFieldName') else 'shape'
             self.spatialReference = description.spatialReference if hasattr(description, 'spatialReference') else {'name':'Unknown'}
-            
+    
+    def __repr__(self):
+        return f'{self.name} - {self.geometry_type} > {self.full_path}'
+
     def __str__(self):
         return f'{self.name} - {self.geometry_type} > {self.full_path}'
     

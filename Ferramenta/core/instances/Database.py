@@ -3,14 +3,15 @@
 import os
 import time
 
-from arcpy import (CreateFeatureDataset_management, CreateFileGDB_management,
-                   Exists, CheckOutExtension)
+from arcpy import (CheckOutExtension, CreateFeatureDataset_management,
+                   CreateFileGDB_management, Exists)
 from arcpy import env as arcpy_env
 from arcpy.da import Editor
-from core.libs.ErrorManager import UnexistingGDBConnectionError
 from core._constants import *
-from core.libs.Base import (BaseConfig, BasePath,
-                                   ProgressTracker, load_path_and_name)
+from core._logs import *
+from core.libs.Base import (BaseConfig, BasePath, ProgressTracker,
+                            load_path_and_name)
+from core.libs.ErrorManager import UnexistingGDBConnectionError
 
 
 class SessionManager(BasePath, BaseConfig):
@@ -189,30 +190,33 @@ class BaseDatabasePath(BasePath):
     database: Database = None
     temp_destination = 'IN_MEMORY'
 
-    def __init__(self, path: str, name: str, *args, **kwargs):
+    def __init__(self, path: str, name: str, create: bool = False, *args, **kwargs):
         super().__init__(path=path, name=name, *args, **kwargs)
-        self.load_database_path_variable(path=path, name=name)
+        self.load_database_path_variable(path=path, name=name, create=create)
 
     @property
     def is_inside_database(self):
         return self.database is not None
         
     @load_path_and_name
-    def load_database_path_variable(self, path: str, name: str = None):
+    def load_database_path_variable(self, path: str, name: str = None, create: bool = False):
         """Loads a feature variable and guarantees it exists and, if in a GDB, if that GDB exists
-
             Args:
                 path (str, optional): Path to the feature. Defaults to None.
                 name (str): feature name
-
-            Raises:
-                UnexistingFeatureError
-
-            Returns:
-                self
         """
         if self.path != 'IN_MEMORY':
+            if create:
+                if '.sde' in path or '.gdb' in path:
+                    aprint(f'Criando Database\n -> path: {path}', level=LogLevels.DEBUG)
+                    self.database = Database(path=path, create=create)
+                else:
+                    aprint(f'Criando Database\n -> path: {path}, name: {name}', level=LogLevels.DEBUG)
+                    self.database = Database(path=path, name=name, create=create)
+
+
             if '.sde' in path or '.gdb' in path:
+                aprint(f'Configurando Database\n -> path: {path}, name: {name}', level=LogLevels.DEBUG)
                 self.database = Database(path=path)
                 self.path = self.database.full_path
         

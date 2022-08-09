@@ -1,0 +1,27 @@
+# Polígono da área de interesse (feature class, .shp)
+target_area: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\CAESB_ChangeDetection\\CAESB_ChangeDetection.gdb\\test"
+# Tabelas de destino dos resultados da classificação
+deteccao_de_mudancas: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca"
+classificacao_atual: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemAtual"
+classificacao_historica: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemHistorica"
+# Mosaic dataset de destino das imagens finais (Caso mosaicadas e clipadas)
+output_mosaic_dataset_current: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\Output_Images_A"
+output_mosaic_dataset_historic: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\Output_Images_H"
+# Pasta de armazenamento das imagens finais
+output_images_location: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\Output_Images"
+# Pastas temporárias
+temp_db: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\temp.gdb"
+temp_dir: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\temp"
+download_storage: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\downloads"
+delete_temp_files: True
+# Parametros de Classificação
+max_cloud_coverage: 20
+sensor: "SENTINEL2"
+mosaic_tiles: True # Caso seja False, ao invés de mosaicar os tiles da área de interesse e clipar na região, os tiles serão processados em um Mosaic Dataset
+classification_arguments: "padding 70;batch_size 2;predict_background True;tile_size 256"
+classification_processor: "CPU"
+# Parâmetros de Execução
+debug: True
+download_images: True
+classify_images: True
+insert_on_database: True

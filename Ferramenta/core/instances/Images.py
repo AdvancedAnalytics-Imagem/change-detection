@@ -12,8 +12,8 @@ from arcpy.sa import ExtractByMask, Stretch
 from core._constants import *
 from core.instances.Database import Database, wrap_on_database_editing
 from core.instances.MosaicDataset import MosaicDataset
-from core.libs.Base import (BaseConfig, BasePath, load_path_and_name,
-                            prevent_server_error)
+from core.libs.Base import (BaseConfig, BasePath, delete_source_files,
+                            load_path_and_name, prevent_server_error)
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
 from sentinelsat.exceptions import ServerError as SetinelServerError
@@ -104,7 +104,7 @@ class SentinelImage(BasePath, BaseConfig):
             self.unzip_files(folder=downloads_folder)
 
             image_bands = self.get_files_by_extension(folder=images_folder, extension='.jp2')
-            CompositeBands(";".join(image_bands), self.full_path)
+            CompositeBands(image_bands, self.full_path)
 
         if Exists(images_folder):
             Delete(images_folder)
@@ -115,9 +115,9 @@ class Image(BasePath, BaseConfig):
     _stretch_prefix: str = 'Stch_'
     _copy_prefix: str = 'Copy_'
     _classification_prefix: str = 'Clssif_'
+    delete_source: bool = True
     mosaic_dataset: MosaicDataset = None
     temp_destination: str = 'IN_MEMORY'
-    processor_type: str = 'CPU'
     processing_date: datetime = datetime.now()
     date_created: datetime = datetime.now()
     database: Database = None
@@ -142,13 +142,21 @@ class Image(BasePath, BaseConfig):
         return self.database is not None
     
     @wrap_on_database_editing
+    @delete_source_files
     def mosaic_images(self, images_for_composition: list, compose_as_single_image: bool) -> str:
         list_of_images_paths = self.get_list_of_valid_paths(items=images_for_composition)
+
+        if len(list_of_images_paths) == 1:
+            image = list_of_images_paths[0]
+            self.name = os.path.basename(image)
+            self.path = os.path.dirname(image)
+            self.full_path = image
+            return self.full_path
 
         self.name = f'{self._mosaic_prefix}{self.name}'
         self.full_path = os.path.join(self.database.full_path, self.name)
         
-        if compose_as_single_image:
+        if not compose_as_single_image:
             self.mosaic_dataset = MosaicDataset(path=self.full_path, images_for_composition=list_of_images_paths)
             self.full_path = self.mosaic_dataset.full_path
 
@@ -166,9 +174,11 @@ class Image(BasePath, BaseConfig):
             mosaic_method='MAXIMUM',
             mosaic_colormap_mode='MATCH'
         )
+
         return self.full_path
 
     @wrap_on_database_editing
+    @delete_source_files
     def extract_by_mask(self, area_of_interest: Feature) -> str:
         if self.mosaic_dataset: return self.full_path
 
@@ -188,6 +198,7 @@ class Image(BasePath, BaseConfig):
         return self.full_path
     
     @wrap_on_database_editing
+    @delete_source_files
     def stretch_image(self) -> str:
         self.name = f'{self._stretch_prefix}{self.name}'
         self.path = self.database.full_path
@@ -214,6 +225,7 @@ class Image(BasePath, BaseConfig):
         
         return self.full_path
 
+    @delete_source_files
     def copy_image(self, pixel_type: str = None, nodata_value: str = '', background_value: float = None, destination: str or Database = None) -> str:
         """Creates a copy of the current image
             Args:
@@ -255,14 +267,18 @@ class Image(BasePath, BaseConfig):
         copy = self.copy_image(pixel_type='1_BIT', destination=output_path)
         return Feature(path=f'{copy}_polygon', raster=copy, temp_destination=self.temp_destination)
 
-    def classify(self, classifier: str, output_path: Database):
+    @delete_source_files
+    def classify(self, classifier: str, output_path: Database, arguments: str = None, processor_type: str = 'CPU') -> Feature:
         print(f'Classificando a imagem {self.full_path}')
         classified_raster_full_path = os.path.join(self.temp_destination.full_path, f'{self._classification_prefix}{self.name}')
+
+        if not arguments:
+            arguments="padding 70;batch_size 2;predict_background True;tile_size 256"
+
         if not Exists(classified_raster_full_path):
             self.temp_destination.start_editing()
-            with EnvManager(processorType=self.processor_type):
+            with EnvManager(processorType=processor_type):
                 try:
-                    arguments="padding 70;batch_size 2;predict_background True;tile_size 256"
                     out_classified_raster = ClassifyPixelsUsingDeepLearning(
                         in_raster=self.full_path,
                         in_model_definition=classifier.full_path,

@@ -5,6 +5,7 @@ import os
 from arcpy import (CreateMosaicDataset_management, Describe, Exists,
                    SpatialReference)
 from arcpy.management import AddRastersToMosaicDataset
+from core._logs import *
 from core.libs.Base import BaseConfig, load_path_and_name, prevent_server_error
 from core.libs.ErrorManager import MosaicDatasetError
 
@@ -13,11 +14,13 @@ from .Database import BaseDatabasePath, Database, wrap_on_database_editing
 
 class MosaicDataset(BaseDatabasePath, BaseConfig):
     prefix: str = 'MosDtst_'
-    _coordinate_system: SpatialReference = None
+    _coordinate_system: SpatialReference = SpatialReference(4326) # GCS_WGS_1984
 
     @load_path_and_name
-    def __init__(self, path: str, name: str = None, images_for_composition: list = [], *args, **kwargs):
-        name = f'{self.prefix}{name}'
+    def __init__(self, path: str, name: str = None, images_for_composition: list = [], *args, **kwargs) -> None:
+        if not name.startswith(self.prefix):
+            name = f'{self.prefix}{name}'
+
         super().__init__(path=path, name=name, *args, **kwargs)
 
         if images_for_composition:
@@ -30,13 +33,13 @@ class MosaicDataset(BaseDatabasePath, BaseConfig):
             self.add_images(images=images_for_composition)
     
     @property
-    def coordinate_system(self):
+    def coordinate_system(self) -> SpatialReference:
         if not self._coordinate_system:
             self._coordinate_system = Describe(self.full_path).spatialReference
         return self._coordinate_system
 
     @wrap_on_database_editing
-    def create_mosaic_dataset(self):
+    def create_mosaic_dataset(self) -> None:
         try:
             CreateMosaicDataset_management(
                 in_workspace=self.database.full_path,
@@ -47,7 +50,7 @@ class MosaicDataset(BaseDatabasePath, BaseConfig):
             raise MosaicDatasetError(mosaic=self.full_path, error=e, message='Erro ao criar Mosaic Dataset')
 
     @wrap_on_database_editing
-    def add_images(self, images):
+    def add_images(self, images: str) -> None:
         images = self.get_list_of_valid_paths(items=images)
         try:
             AddRastersToMosaicDataset(

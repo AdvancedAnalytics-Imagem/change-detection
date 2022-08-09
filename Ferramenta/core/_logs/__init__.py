@@ -4,6 +4,13 @@ from arcpy import AddError, AddMessage, AddWarning, SetProgressor
 from core._constants import *
 
 
+class LogLevels:
+    INFO = 'info'
+    ERROR = 'error'
+    WARNING = 'warning'
+    DEBUG = 'debug'
+    CRITICAL = 'critical'
+
 class MessageLogging:
     def __init__(self, *args, **kwargs):
         logging.basicConfig(
@@ -45,24 +52,23 @@ class MessageLogging:
 
 log_message = MessageLogging()
 
-def aprint(message: str, level: str = 'info', display_message: bool = True, progress: bool = False):
+def aprint(message: str, level: LogLevels = None, display_message: bool = True, progress: bool = False):
     message = u'{}'.format(message)
-    if level:
-        level = level.lower()
-        if 'info' in level:
-            log_message.info(message, display_message=display_message)
 
-        if 'error' in level:
-            log_message.error(message, display_message=display_message)
+    if level is LogLevels.INFO:
+        log_message.info(message, display_message=display_message)
 
-        if 'warning' in level:
-            log_message.warning(message, display_message=display_message)
-            
-        if 'debug' in level:
-            log_message.debug(message, display_message=display_message)
+    if level is LogLevels.ERROR:
+        log_message.error(message, display_message=display_message)
 
-        if 'critical' in level:
-            log_message.critical(message, display_message=display_message)
+    if level is LogLevels.WARNING:
+        log_message.warning(message, display_message=display_message)
+        
+    if level is LogLevels.DEBUG:
+        log_message.debug(message, display_message=display_message)
+
+    if level is LogLevels.CRITICAL:
+        log_message.critical(message, display_message=display_message)
     
     if progress:
         log_message.progress(message)
