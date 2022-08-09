@@ -208,15 +208,11 @@ class BaseDatabasePath(BasePath):
         if self.path != 'IN_MEMORY':
             if create:
                 if '.sde' in path or '.gdb' in path:
-                    aprint(f'Criando Database\n -> path: {path}', level=LogLevels.DEBUG)
                     self.database = Database(path=path, create=create)
                 else:
-                    aprint(f'Criando Database\n -> path: {path}, name: {name}', level=LogLevels.DEBUG)
                     self.database = Database(path=path, name=name, create=create)
 
-
             if '.sde' in path or '.gdb' in path:
-                aprint(f'Configurando Database\n -> path: {path}, name: {name}', level=LogLevels.DEBUG)
                 self.database = Database(path=path)
                 self.path = self.database.full_path
         

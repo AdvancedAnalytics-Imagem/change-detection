@@ -7,15 +7,16 @@ from datetime import date, datetime, timedelta
 
 from arcpy.da import SearchCursor
 from core._constants import *
+from core._logs import *
 from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image, SentinelImage
 from core.libs.Base import (BaseConfig, BasePath, ProgressTracker,
                             prevent_server_error)
+from core.ml_models.ImageClassifier import Sentinel2ImageClassifier
 from nbformat import ValidationError
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
-from core.ml_models.ImageClassifier import Sentinel2ImageClassifier
 
 
 class BaseImageAcquisitionService(BasePath, BaseConfig):
@@ -30,7 +31,8 @@ class BaseImageAcquisitionService(BasePath, BaseConfig):
         self.set_downloaded_images_path(path=downloads_folder)
     
     def set_downloaded_images_path(self, path: str):
-        if not path.endswith('Downloaded_Images'): path = os.path.join(path, 'Downloaded_Images')
+        aprint(f'Path: {path}', level=LogLevels.DEBUG)
+        if path and str(path).endswith('Downloaded_Images'): path = os.path.join(path, 'Downloaded_Images')
         self.images_folder = self.load_path_variable(path=path)
     
 

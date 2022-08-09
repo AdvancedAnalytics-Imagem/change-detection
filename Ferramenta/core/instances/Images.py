@@ -104,6 +104,7 @@ class SentinelImage(BasePath, BaseConfig):
             self.unzip_files(folder=downloads_folder)
 
             image_bands = self.get_files_by_extension(folder=images_folder, extension='.jp2')
+            image_bands.reverse()
             CompositeBands(image_bands, self.full_path)
 
         if Exists(images_folder):
@@ -268,7 +269,7 @@ class Image(BasePath, BaseConfig):
         return Feature(path=f'{copy}_polygon', raster=copy, temp_destination=self.temp_destination)
 
     @delete_source_files
-    def classify(self, classifier: str, output_path: Database, arguments: str = None, processor_type: str = 'CPU') -> Feature:
+    def classify(self, classifier: str, output_path: Database, arguments: str = None, processor_type: str = 'CPU', n_cores: int = 1) -> Feature:
         print(f'Classificando a imagem {self.full_path}')
         classified_raster_full_path = os.path.join(self.temp_destination.full_path, f'{self._classification_prefix}{self.name}')
 
@@ -277,7 +278,10 @@ class Image(BasePath, BaseConfig):
 
         if not Exists(classified_raster_full_path):
             self.temp_destination.start_editing()
-            with EnvManager(processorType=processor_type):
+            with EnvManager(
+                parallelProcessingFactor=str(n_cores),
+                processorType=processor_type
+            ):
                 try:
                     out_classified_raster = ClassifyPixelsUsingDeepLearning(
                         in_raster=self.full_path,

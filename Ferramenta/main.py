@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 #!/usr/bin/python
-# interpreter > C:\Users\Matheus Caputo Pires\AppData\Local\ESRI\conda\envs\arcgispro-py3-deeplearning
 import datetime
 from datetime import datetime
 
@@ -10,7 +9,7 @@ from core.configs.Configs import Configs
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 
-aprint(message='Iniciando Execução - v1.09', level=LogLevels.INFO)
+aprint(message='Iniciando Execução - v1.12', level=LogLevels.INFO)
 variables = Configs()
 
 def get_images():
@@ -29,7 +28,6 @@ def get_images():
     )
     return images
 
-
 def classify_image(image = None, ml_model = None):
     aprint(message='Classificando Imagens', progress=True)
     if not image or not ml_model: return
@@ -37,7 +35,8 @@ def classify_image(image = None, ml_model = None):
         classifier=ml_model,
         output_path=variables.temp_db,
         arguments=variables.classification_arguments,
-        processor_type=variables.classification_processor
+        processor_type=variables.classification_processor,
+        n_cores=variables.n_cores
     )
     return classification
 

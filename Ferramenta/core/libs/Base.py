@@ -6,10 +6,10 @@ import time
 from datetime import date, datetime, timedelta
 from zipfile import ZipFile
 
-from arcpy.management import Delete
 from arcpy import Exists
-from core.libs.ProgressTracking import ProgressTracker
+from arcpy.management import Delete
 from core._constants import *
+from core.libs.ProgressTracking import ProgressTracker
 from sentinelsat.exceptions import ServerError as SetinelServerError
 
 from .ErrorManager import FolderAccessError, MaxFailuresError
