@@ -215,6 +215,7 @@ class BaseDatabasePath(BasePath):
             if '.sde' in path or '.gdb' in path:
                 self.database = Database(path=path)
 
-            self.path = self.database.full_path
+            if self.database:
+                self.path = self.database.full_path
         
         self.full_path = os.path.join(self.path, self.name)
