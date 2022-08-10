@@ -10,6 +10,7 @@ from arcpy import Exists
 from arcpy.management import Delete
 from core._constants import *
 from core.libs.ProgressTracking import ProgressTracker
+from core._logs import *
 from sentinelsat.exceptions import ServerError as SetinelServerError
 
 from .ErrorManager import FolderAccessError, MaxFailuresError
@@ -63,7 +64,7 @@ def prevent_server_error(wrapped_function):
                     raise(e)
                 if failed_attempts > 20:
                     raise MaxFailuresError(wrapped_function.__name__, attempts=failed_attempts)
-                print(f'Sentinel Server error:\n{e}\nReattempting connection in a few...')
+                aprint(f'Sentinel Server error:\n{e}\nReattempting connection in a few...', level=LogLevels.WARNING)
                 failed_attempts += 1
                 time.sleep(failed_attempts*20)
 
@@ -112,7 +113,7 @@ class BaseConfig:
             zipObj.close()
             os.remove(full_path)
         except Exception:
-            print(f"O arquivo {name} está corrompido")
+            aprint(f"O arquivo {name} está corrompido", level=LogLevels.WARNING)
             os.remove(full_path)
         return full_path.replace('.zip','')
 
@@ -125,7 +126,7 @@ class BaseConfig:
                 for item in os.listdir(folder):
                     extracted_list.append(self.unzip_file(path=folder, name=item))
             else:
-                print(f"Pasta {folder} vazia")
+                aprint(f"Pasta {folder} vazia", level=LogLevels.WARNING)
         elif files:
             for item in files:
                 extracted_list.append(self.unzip_file(path=folder, name=item))

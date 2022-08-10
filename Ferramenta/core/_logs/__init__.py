@@ -55,7 +55,7 @@ log_message = MessageLogging()
 def aprint(message: str, level: LogLevels = None, display_message: bool = True, progress: bool = False):
     message = u'{}'.format(message)
 
-    if level is LogLevels.INFO:
+    if not level or level is LogLevels.INFO:
         log_message.info(message, display_message=display_message)
 
     if level is LogLevels.ERROR:

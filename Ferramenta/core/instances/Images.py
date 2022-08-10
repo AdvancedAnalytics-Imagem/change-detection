@@ -10,6 +10,7 @@ from arcpy.management import (CompositeBands, CopyRaster, Delete,
                               MosaicToNewRaster)
 from arcpy.sa import ExtractByMask, Stretch
 from core._constants import *
+from core._logs import *
 from core.instances.Database import Database, wrap_on_database_editing
 from core.instances.MosaicDataset import MosaicDataset
 from core.libs.Base import (BaseConfig, BasePath, delete_source_files,
@@ -57,7 +58,7 @@ class SentinelImage(BasePath, BaseConfig):
             try:
                 return float(self.nodata_pixel_percentage_str)
             except Exception as e:
-                print(f'Não foi possível converter o valor de nodata {self.nodata_pixel_percentage_str} para decimal (float).\n{e}')
+                aprint(f'Não foi possível converter o valor de nodata {self.nodata_pixel_percentage_str} para decimal (float).\n{e}')
         return 100
     def get_odata_file_url(self, path: str) -> str:
         odata_path = f"{self.api.api_url}odata/v1/Products('{self.uuid}')"
@@ -122,7 +123,6 @@ class Image(BasePath, BaseConfig):
     processing_date: datetime = datetime.now()
     date_created: datetime = datetime.now()
     database: Database = None
-    base_images: list = []
 
     def __init__(self, path: str, name: str = None, images_for_composition: list = [], mask: Feature = None, temp_destination: str or Database = None, compose_as_single_image: bool = True, *args, **kwargs):
         if temp_destination:
@@ -132,7 +132,6 @@ class Image(BasePath, BaseConfig):
         
         super(Image, self).__init__(path=path, name=name, *args, **kwargs)
         self.database = Database(path=path, create=True)
-        self.base_images = images_for_composition
         if images_for_composition:
             self.mosaic_images(images_for_composition=images_for_composition, compose_as_single_image=compose_as_single_image)
         if mask and isinstance(mask, Feature):
@@ -164,7 +163,7 @@ class Image(BasePath, BaseConfig):
         if Exists(self.full_path):
             return self.full_path
 
-        print(f'Criando Mosaico em {self.database.full_path}')
+        aprint(f'Criando Mosaico em {self.database.full_path}')
         MosaicToNewRaster(
             input_rasters=list_of_images_paths,
             output_location=self.database.full_path,
@@ -186,7 +185,7 @@ class Image(BasePath, BaseConfig):
         self.name = f'{self._masked_prefix}{self.name}'
         self.path = self.database.full_path
         if not Exists(os.path.join(self.path, self.name)):
-            print(f'Extraindo máscara da imagem {self.full_path}')
+            aprint(f'Extraindo máscara da imagem {self.full_path}')
             clipped_mosaic = ExtractByMask(
                 in_raster=self.full_path,
                 in_mask_data=area_of_interest.full_path
@@ -204,7 +203,7 @@ class Image(BasePath, BaseConfig):
         self.name = f'{self._stretch_prefix}{self.name}'
         self.path = self.database.full_path
         if not Exists(os.path.join(self.path, self.name)):
-            print(f'Aplicando Strech na Imagem {self.full_path}')
+            aprint(f'Aplicando Strech na Imagem {self.full_path}')
             stretch = Stretch(
                 raster=self.full_path,
                 stretch_type="StdDev",
@@ -243,7 +242,7 @@ class Image(BasePath, BaseConfig):
 
         destination.start_editing()
         result = f'{self._copy_prefix}{self.name}'
-        print(f'Criando cópia de {self.full_path}')
+        aprint(f'Criando cópia de {self.full_path}')
         CopyRaster(
             in_raster=self.full_path,
             out_rasterdataset=result,
@@ -268,9 +267,8 @@ class Image(BasePath, BaseConfig):
         copy = self.copy_image(pixel_type='1_BIT', destination=output_path)
         return Feature(path=f'{copy}_polygon', raster=copy, temp_destination=self.temp_destination)
 
-    @delete_source_files
     def classify(self, classifier: str, output_path: Database, arguments: str = None, processor_type: str = 'CPU', n_cores: int = 1) -> Feature:
-        print(f'Classificando a imagem {self.full_path}')
+        aprint(f'Classificando a imagem {self.full_path}')
         classified_raster_full_path = os.path.join(self.temp_destination.full_path, f'{self._classification_prefix}{self.name}')
 
         if not arguments:

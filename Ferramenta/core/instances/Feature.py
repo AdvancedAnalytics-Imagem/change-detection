@@ -18,13 +18,14 @@ from arcpy.cartography import SimplifyLine, SimplifyPolygon
 from arcpy.conversion import RasterToPolygon
 from arcpy.da import SearchCursor
 from arcpy.management import AddField, CalculateField, Delete
+from core._logs import *
 from core.libs.Base import BasePath, load_path_and_name
 from core.libs.Enums import FieldType
 from core.libs.ErrorManager import MaxFailuresError, UnexistingFeatureError
 from core.ml_models.ImageClassifier import BaseImageClassifier
 from nbformat import ValidationError
 
-from .Database import Database, wrap_on_database_editing, BaseDatabasePath
+from .Database import BaseDatabasePath, Database, wrap_on_database_editing
 from .Editor import CursorManager
 
 _REQUIRED_OVERLAP_TYPE_FOR_DISTANCE = [
@@ -307,13 +308,13 @@ class Feature(BaseDatabasePath, CursorManager):
             raise ValidationError(message=f'Não foi possível exportar as feições selecionadas.\n{e}')
 
     def remove_all_rows(self):
-        print(f'{self.row_count()} registros a serem removidos')
+        aprint(f'{self.row_count()} registros a serem removidos')
         while self.row_count():
             try:
                 TruncateTable_management(in_table=self.full_path)
                 continue
             except Exception as e:
-                print(f'Unable to truncate table, trying via cursor.\nError:\n{e}')
+                aprint(f'Unable to truncate table, trying via cursor.\nError:\n{e}')
             try:
                 with self.update_cursor() as cursor:
                     for index, row in enumerate(cursor):
@@ -358,7 +359,7 @@ class Feature(BaseDatabasePath, CursorManager):
             )
             return True
         except Exception as e:
-            print(e)
+            aprint(e)
             return False
 
     def append_dataset(self, origin, where_clause: str = None, extra_constant_values: dict = {}) -> list:
@@ -368,7 +369,7 @@ class Feature(BaseDatabasePath, CursorManager):
         fields = self.get_field_names()
         
         total_records = origin.row_count()
-        print(f'Anexando {total_records} de {origin.name} em {self.name}')
+        aprint(f'Anexando {total_records} de {origin.name} em {self.name}')
         if not self.batch_size: self.batch_size = total_records
 
         self.progress_tracker.init_tracking(total=total_records, name='Append Data')

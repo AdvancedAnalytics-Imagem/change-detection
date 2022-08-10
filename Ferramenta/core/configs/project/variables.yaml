@@ -5,8 +5,8 @@ deteccao_de_mudancas: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseCon
 classificacao_atual: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemAtual"
 classificacao_historica: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemHistorica"
 # Mosaic dataset de destino das imagens finais (Caso mosaicadas e clipadas)
-output_mosaic_dataset_current: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\Output_Images_A"
-output_mosaic_dataset_historic: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\Output_Images_H"
+output_mosaic_dataset_current: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\MosDtst_Output_Images.gdb\\Output_Images_A"
+output_mosaic_dataset_historic: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\MosDtst_Output_Images.gdb\\Output_Images_H"
 # Pasta de armazenamento das imagens finais
 output_images_location: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\Output_Images"
 # Pastas temporárias

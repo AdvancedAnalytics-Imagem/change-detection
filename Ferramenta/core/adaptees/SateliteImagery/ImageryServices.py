@@ -31,14 +31,14 @@ class BaseImageAcquisitionService(BasePath, BaseConfig):
         self.set_downloaded_images_path(path=downloads_folder)
     
     def set_downloaded_images_path(self, path: str):
-        aprint(f'Path: {path}', level=LogLevels.DEBUG)
-        if path and str(path).endswith('Downloaded_Images'): path = os.path.join(path, 'Downloaded_Images')
+        if path and not path.endswith('Downloaded_Images'): path = os.path.join(path, 'Downloaded_Images')
         self.images_folder = self.load_path_variable(path=path)
+        aprint(f'Image Downloads Folder: {self.images_folder}', level=LogLevels.INFO)
     
 
 class Sentinel2(BaseImageAcquisitionService):
     _scene_min_coverage_threshold: float = 1.5
-    _combined_scene_min_coverage_threshold: float = 40
+    _combined_scene_min_coverage_threshold: float = 90
     _tiles_layer_name: str = 'grade_sentinel_brasil'
     _query_days_before_today: int = 30
     max_cloud_coverage: int = 20
@@ -71,7 +71,7 @@ class Sentinel2(BaseImageAcquisitionService):
         if not self.selected_tyles:
             self.select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
         self.tile_names = [i[0] for i in SearchCursor(self.selected_tyles.full_path, ['NAME'])]
-        print(f'Tiles selecionados:\n{",".join(self.tile_names)}')
+        aprint(f'Tiles selecionados:\n{",".join(self.tile_names)}')
         return self.tile_names
     
     @prevent_server_error
@@ -88,7 +88,7 @@ class Sentinel2(BaseImageAcquisitionService):
             "area_relation": "Intersects",
             "producttype": "S2MSI2A",
             "platformname": "Sentinel-2",
-            "cloudcoverpercentage": (0, self.max_cloud_coverage + 10),
+            "cloudcoverpercentage": (0, self.max_cloud_coverage),
             "raw": f"filename:S2*",
             "date": (begin_date, end_date)
         }
@@ -102,7 +102,7 @@ class Sentinel2(BaseImageAcquisitionService):
         end_date = max_date + timedelta(days=1)
         aoi_geojson = area_of_interest.geojson_geometry()
         area = geojson_to_wkt(aoi_geojson)
-        print(f'Buscando por imagens disponíveis entre {begin_date} e {end_date} na área de interesse')
+        aprint(f'Buscando por imagens disponíveis entre {begin_date} e {end_date} na área de interesse')
         for api in self.apis:
             identified_images = self._query_images(api=api, area=area, begin_date=begin_date, end_date=end_date)
             self.available_images = {}
@@ -154,8 +154,7 @@ class Sentinel2(BaseImageAcquisitionService):
 
     @staticmethod
     def _filter_by_nodata_threshold(images: list, threshold: int) -> list:
-        if not images:
-            return []
+        if not images: return []
         return [image for image in images if image.nodata_pixel_percentage < threshold]
     
     @staticmethod
@@ -177,7 +176,7 @@ class Sentinel2(BaseImageAcquisitionService):
         best_available_image = self._get_best_possile_images(list_of_images=available_tile_images, tile_name=tile_name)
 
         if not best_available_image:
-            print(f'Não existe imagem disponível para o tile {tile_name} no intervalo dos últimos {self._query_days_before_today} que se enquadre nos parâmetros de filtro especificados')
+            aprint(f'Não existe imagem disponível para o tile {tile_name} no intervalo dos últimos {self._query_days_before_today} que se enquadre nos parâmetros de filtro especificados')
             return []
 
         if not isinstance(best_available_image, list): best_available_image = [best_available_image]

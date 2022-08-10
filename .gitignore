@@ -25,3 +25,4 @@ __pycache__
 *.pyc
 Ferramenta/core/configs/project/variables.json
 Ferramenta/core/configs/project/authentication.json
+*.log

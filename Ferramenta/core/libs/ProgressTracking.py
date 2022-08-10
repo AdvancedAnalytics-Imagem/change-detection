@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 #!/usr/bin/python
 from datetime import datetime
+from core._logs import *
 
 class ProgressTracker:
     _next_percentage: int = 0
@@ -27,8 +28,7 @@ class ProgressTracker:
             if self.current:
                 self.estimate_completion_time()
             self._next_percentage += 1
-            # print(f"{self.name} |{self.progress}{self.remaining_progress}| {self.estimated_completion_time}", end="\r")
-            print(f"{self.name} |{self.progress}{self.remaining_progress}| Estimativa de conclusão: {self.estimated_completion_time}", end="\n")
+            aprint(f"{self.name} |{self.progress}{self.remaining_progress}| Estimativa de conclusão: {self.estimated_completion_time}")
     
     @property
     def remaining_progress(self) -> str:

@@ -1,5 +1,15 @@
+# -*- encoding: utf-8 -*-
+#!/usr/bin/python
+import sys
+
+from core._logs import *
+
+
 class Error(Exception):
     """Base class for other exceptions"""
+    def __init__(self, message):
+        aprint(message, level=LogLevels.CRITICAL)
+        sys.exit()
 
 class FolderAccessError(Error):
     """Exception for an unaccessible folder"""

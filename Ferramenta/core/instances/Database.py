@@ -207,13 +207,14 @@ class BaseDatabasePath(BasePath):
         """
         if self.path != 'IN_MEMORY':
             if create:
-                if '.sde' in path or '.gdb' in path:
+                if path.endswith('.sde') or path.endswith('.gdb'):
                     self.database = Database(path=path, create=create)
                 else:
                     self.database = Database(path=path, name=name, create=create)
 
             if '.sde' in path or '.gdb' in path:
                 self.database = Database(path=path)
-                self.path = self.database.full_path
+
+            self.path = self.database.full_path
         
         self.full_path = os.path.join(self.path, self.name)
