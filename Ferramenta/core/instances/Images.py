@@ -136,6 +136,7 @@ class Image(BasePath, BaseConfig):
             self.mosaic_images(images_for_composition=images_for_composition, compose_as_single_image=compose_as_single_image)
         if mask and isinstance(mask, Feature):
             self.extract_by_mask(area_of_interest=mask)
+            self.stretch_image()
 
     @property
     def is_inside_database(self):

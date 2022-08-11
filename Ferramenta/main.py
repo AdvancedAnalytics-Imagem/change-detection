@@ -78,8 +78,8 @@ def main():
     if variables.insert_on_database:
         aprint(message='Exportando resultados', progress=True)
 
-        output_mosaic_dataset_current.add_images(images.current_image)
-        output_mosaic_dataset_historic.add_images(images.historic_image)
+        variables.output_mosaic_dataset_current.add_images(images.current_image)
+        variables.output_mosaic_dataset_historic.add_images(images.historic_image)
         
         tile_names = ', '.join(images.service.tile_names)
         variables.classificacao_atual.append_dataset(origin=current_classification, extra_constant_values={

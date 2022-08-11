@@ -18,15 +18,14 @@ class MosaicDataset(BaseDatabasePath, BaseConfig):
 
     @load_path_and_name
     def __init__(self, path: str, name: str = None, images_for_composition: list = [], *args, **kwargs) -> None:
-        if not name.startswith(self.prefix):
-            name = f'{self.prefix}{name}'
-
         super().__init__(path=path, name=name, *args, **kwargs)
 
         if images_for_composition:
             self._coordinate_system = Describe(images_for_composition[0]).spatialReference
         
         if not self.exists:
+            if not name.startswith(self.prefix):
+                name = f'{self.prefix}{name}'
             self.create_mosaic_dataset()
         
         if images_for_composition:

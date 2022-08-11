@@ -22,6 +22,7 @@ class SessionManager(BasePath, BaseConfig):
     session: Editor = None
     is_editing: bool = False
     _previous_workspace: str = None
+    _current_session: Editor = None
     full_path: str = None
     
     def __init__(self, *args, **kwargs):
@@ -43,6 +44,8 @@ class SessionManager(BasePath, BaseConfig):
         arcpy_env.addOutputsToMap = False
         arcpy_env.overwriteOutput = True
         CheckOutExtension("ImageAnalyst")
+        CheckOutExtension("DataInteroperability")
+        CheckOutExtension("Spatial")
 
     def set_workspace_env(self):
         self._previous_workspace = arcpy_env.workspace
