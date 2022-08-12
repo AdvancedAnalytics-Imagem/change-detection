@@ -24,7 +24,7 @@ def get_images():
         area_of_interest=variables.target_area,
         results_output_location=variables.output_images_location,
         max_cloud_coverage=variables.max_cloud_coverage,
-        compose_as_single_image=variables.mosaic_tiles # Caso negativo, os tiles não serão mosaicados em uma única imagem, isto impossibilita o append em um Mosaic Dataset
+        compose_as_single_image=variables.compose_as_single_image # Caso negativo, os tiles não serão mosaicados em uma única imagem, isto impossibilita o append em um Mosaic Dataset
     )
     return images
 

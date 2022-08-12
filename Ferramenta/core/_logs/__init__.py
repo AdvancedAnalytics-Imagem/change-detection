@@ -1,5 +1,5 @@
 import logging
-
+from datetime import datetime
 from arcpy import AddError, AddMessage, AddWarning, SetProgressor
 from core._constants import *
 
@@ -14,7 +14,7 @@ class LogLevels:
 class MessageLogging:
     def __init__(self, *args, **kwargs):
         logging.basicConfig(
-            filename=os.path.join(LOGS_DIR, 'general_loggin.log'),
+            filename=os.path.join(LOGS_DIR, f'general_loggin_{datetime.now().strftime("%Y%m%d%H%M%S")}.log'),
             filemode='w',
             format='%(asctime)s - %(levelname)s - %(message)s',
             datefmt='%d-%b-%y %H:%M:%S',
