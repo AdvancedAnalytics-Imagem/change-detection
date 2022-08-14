@@ -3,7 +3,7 @@
 from datetime import date, datetime, timedelta
 from enum import Enum, unique
 
-from arcpy import ExponentialSmoothingForecast_stpm
+from arcpy import Exists
 from core._constants import *
 from core.adaptees.SateliteImagery.ImageryServices import Cebers, Sentinel2
 from core.instances.Database import Database
