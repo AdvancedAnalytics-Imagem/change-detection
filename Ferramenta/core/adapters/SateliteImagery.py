@@ -3,6 +3,7 @@
 from datetime import date, datetime, timedelta
 from enum import Enum, unique
 
+from arcpy import ExponentialSmoothingForecast_stpm
 from core._constants import *
 from core.adaptees.SateliteImagery.ImageryServices import Cebers, Sentinel2
 from core.instances.Database import Database
@@ -53,30 +54,39 @@ class ImageAcquisition(BaseConfig):
         current_images = {}
         current_image_name = f'Current_Image_{self.today_str}'
 
-        self.service.query_available_images(area_of_interest=area_of_interest)
+        if not Exists(os.path.join(results_output_location.full_path, current_image_name)):
+            self.service.query_available_images(area_of_interest=area_of_interest)
 
-        for tile in intersecting_tiles:
-            tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest)
-            for tile_image in tile_images:
-                current_images[tile_image.datetime] = [*current_images.get(tile_image.datetime,[]), tile_image]
-            self.progress_tracker.report_progress(add_progress=True)
+            for tile in intersecting_tiles:
+                tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest)
+                for tile_image in tile_images:
+                    current_images[tile_image.datetime] = [*current_images.get(tile_image.datetime,[]), tile_image]
+                self.progress_tracker.report_progress(add_progress=True)
 
-        composition_images = []
-        [composition_images.extend(i) for i in current_images.values()]
+            composition_images = []
+            [composition_images.extend(i) for i in current_images.values()]
 
-        self.current_image = Image(
-            path=results_output_location.full_path,
-            name=current_image_name,
-            images_for_composition=composition_images,
-            compose_as_single_image=compose_as_single_image,
-            mask=area_of_interest,
-            temp_destination=self.temp_destination
-        )
+            self.current_image = Image(
+                path=results_output_location.full_path,
+                name=current_image_name,
+                images_for_composition=composition_images,
+                compose_as_single_image=compose_as_single_image,
+                mask=area_of_interest,
+                temp_destination=self.temp_destination
+            )
 
-        tiles_dates = list(current_images.keys())
-        tiles_dates.sort()
-        tiles_min_date = tiles_dates[0]
-        tiles_max_date = tiles_dates[-1]
+            tiles_dates = list(current_images.keys())
+            tiles_dates.sort()
+            tiles_min_date = tiles_dates[0]
+            tiles_max_date = tiles_dates[-1]
+
+        else:
+            self.current_image = Image(
+                path=results_output_location.full_path,
+                name=current_image_name,
+                temp_destination=self.temp_destination
+            )
+            tiles_max_date = self.today
 
         self.current_image.date_created = tiles_max_date
 
@@ -84,29 +94,37 @@ class ImageAcquisition(BaseConfig):
 
         historic_images = {}
         historic_image_name = f'Historic_Image_{self.today_str}'
-        min_search_date = tiles_min_date - timedelta(days=30)
-        self.service.query_available_images(area_of_interest=area_of_interest, max_date=min_search_date)
+        min_search_date = tiles_max_date - timedelta(days=30)
 
-        for tile in intersecting_tiles:
-            tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest, max_date=min_search_date)
-            for tile_image in tile_images:
-                historic_images[tile_image.datetime] = [*historic_images.get(tile_image.datetime,[]), tile_image]
-            self.progress_tracker.report_progress(add_progress=True)
-        
-        hist_composition_images = []
-        [hist_composition_images.extend(i) for i in historic_images.values()]
+        if not Exists(os.path.join(results_output_location.full_path, historic_image_name)):
+            self.service.query_available_images(area_of_interest=area_of_interest, max_date=min_search_date)
 
-        self.historic_image = Image(
-            path=results_output_location.full_path,
-            name=historic_image_name,
-            images_for_composition=hist_composition_images,
-            compose_as_single_image=compose_as_single_image,
-            mask=area_of_interest,
-            temp_destination=self.temp_destination
-        )
+            for tile in intersecting_tiles:
+                tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest, max_date=min_search_date)
+                for tile_image in tile_images:
+                    historic_images[tile_image.datetime] = [*historic_images.get(tile_image.datetime,[]), tile_image]
+                self.progress_tracker.report_progress(add_progress=True)
+            
+            hist_composition_images = []
+            [hist_composition_images.extend(i) for i in historic_images.values()]
 
-        hist_tiles_dates = list(historic_images.keys())
-        hist_tiles_dates.sort()
-        hist_tiles_max_date = hist_tiles_dates[-1]
+            self.historic_image = Image(
+                path=results_output_location.full_path,
+                name=historic_image_name,
+                images_for_composition=hist_composition_images,
+                compose_as_single_image=compose_as_single_image,
+                mask=area_of_interest,
+                temp_destination=self.temp_destination
+            )
+            hist_tiles_dates = list(historic_images.keys())
+            hist_tiles_dates.sort()
+            hist_tiles_max_date = hist_tiles_dates[-1]
+        else:
+            self.historic_image = Image(
+                path=results_output_location.full_path,
+                name=historic_image_name,
+                temp_destination=self.temp_destination
+            )
+            hist_tiles_max_date = min_search_date
 
         self.historic_image.date_created = hist_tiles_max_date
