@@ -25,7 +25,7 @@ class ImageAcquisition(BaseConfig):
     def __init__(self, service: str = 'SENTINEL2', credentials: list = [], downloads_folder: str = None, temp_destination: str or Database = None) -> None:
         if temp_destination:
             if not isinstance(temp_destination, Database):
-                temp_destination = Database(temp_database)
+                temp_destination = Database(temp_destination)
             self.temp_destination = temp_destination
         
         self.service = self.Services[service].value(downloads_folder=downloads_folder)
