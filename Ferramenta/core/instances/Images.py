@@ -227,7 +227,7 @@ class Image(BasePath, BaseConfig):
         return self.full_path
 
     @delete_source_files
-    def copy_image(self, pixel_type: str = None, nodata_value: str = '', background_value: float = None, destination: str or Database = None) -> str:
+    def copy_image(self, pixel_type: str = None, nodata_value: str = '', background_value: float = None, destination: str or Database = None, delete_source: bool = False) -> str:
         """Creates a copy of the current image
             Args:
                 destination (str, optional): path to the folder to receive the raster. Defaults to 'IN_MEMORY'.
@@ -294,7 +294,11 @@ class Image(BasePath, BaseConfig):
                     raise e
             self.temp_destination.close_editing()
         self.processing_date = self.now
-        feature = Feature(path=f'{classified_raster_full_path}_polygon', raster=classified_raster_full_path, temp_destination=self.temp_destination)
+        polygon_path = f'{classified_raster_full_path}_polygon'
+        if Exist(polygon_path):
+            return Feature(polygon_path)
+            
+        feature = Feature(path=polygon_path, raster=classified_raster_full_path, temp_destination=self.temp_destination)
         feature.calculate_field(
             image_classifier=classifier,
             field_name=classifier.class_field

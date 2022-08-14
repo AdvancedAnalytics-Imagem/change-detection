@@ -6,7 +6,7 @@ from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from core._constants import *
 from core.libs.Base import BaseConfig
 from .Database import Database, wrap_on_database_editing
-from core.libs.ErrorManager import NotADatabase, SavingEditingSessionError
+from core.libs.ErrorManager import SavingEditingSessionError
 
 # TODO Create transformation manager for insert cursor
 # class TransformationManager(BaseConfig):
@@ -34,31 +34,24 @@ class CursorManager(BaseConfig):
     full_path: str = None
     database: Database = None
 
-    def __init__(self, full_path: str = None):
+    def __init__(self, full_path: str = None): # TODO I don't think this is used
+        print(f'Initiating Cursor Manager: {self.full_path}')
         if not self.full_path and full_path:
             self.full_path = full_path
 
-    def refresh_editing_session(self) -> any:
-        """Refreshes the database editing session
-        """
-        self.database.refresh_session()
-            
+    @wrap_on_database_editing
     def insert_cursor(self, fields: list = ['*'], datum_transformation: ListTransformations = None) -> dict:
-        self.refresh_editing_session()
-
-        kwargs = {
+        insert_cursor_args = {
             'in_table':self.full_path,
             'field_names':fields,
             'datum_transformation':datum_transformation
         }
-
-        self.current_cursor = CurrentCursor(method=InsertCursor, **kwargs)
+        self.current_cursor = CurrentCursor(method=InsertCursor, **insert_cursor_args)
         return self.current_cursor.open_cursor()
 
+    @wrap_on_database_editing
     def update_cursor(self, fields: list = ['*'], where_clause: str = None, spatial_reference: SpatialReference = None, explode_to_points: bool = False, sql_clause: tuple = (None, None), datum_transformation: ListTransformations = None) -> dict:
-        self.refresh_editing_session()
-        
-        kwargs = {
+        update_cursor_args = {
             'in_table':self.full_path,
             'field_names':fields,
             'where_clause':where_clause,
@@ -67,12 +60,11 @@ class CursorManager(BaseConfig):
             'sql_clause':sql_clause,
             'datum_transformation':datum_transformation
         }
-
-        self.current_cursor = CurrentCursor(method=UpdateCursor, **kwargs)
+        self.current_cursor = CurrentCursor(method=UpdateCursor, **update_cursor_args)
         return self.current_cursor.open_cursor()
 
     def search_cursor(self, fields: list = ['*'], where_clause: str = None, spatial_reference: SpatialReference = None, explode_to_points: bool = False, sql_clause: tuple = (None, None), datum_transformation: ListTransformations = None) -> dict:
-        kwargs = {
+        search_cursor_args = {
             'in_table':self.full_path,
             'field_names':fields,
             'where_clause':where_clause,
@@ -81,6 +73,5 @@ class CursorManager(BaseConfig):
             'sql_clause':sql_clause,
             'datum_transformation':datum_transformation
         }
-
-        self.current_cursor = CurrentCursor(method=SearchCursor, **kwargs)
+        self.current_cursor = CurrentCursor(method=SearchCursor, **search_cursor_args)
         return self.current_cursor.open_cursor()

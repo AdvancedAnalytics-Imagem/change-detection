@@ -51,6 +51,8 @@ class ImageAcquisition(BaseConfig):
         #* Current Image acquisition
 
         current_images = {}
+        current_image_name = f'Current_Image_{self.today_str}'
+
         self.service.query_available_images(area_of_interest=area_of_interest)
 
         for tile in intersecting_tiles:
@@ -64,7 +66,7 @@ class ImageAcquisition(BaseConfig):
 
         self.current_image = Image(
             path=results_output_location.full_path,
-            name=f'Current_Image_{self.format_date_as_str(current_date=self.now, return_format="%Y%m%d")}',
+            name=current_image_name,
             images_for_composition=composition_images,
             compose_as_single_image=compose_as_single_image,
             mask=area_of_interest,
@@ -81,6 +83,7 @@ class ImageAcquisition(BaseConfig):
         #* Historic Image acquisition
 
         historic_images = {}
+        historic_image_name = f'Historic_Image_{self.today_str}'
         min_search_date = tiles_min_date - timedelta(days=30)
         self.service.query_available_images(area_of_interest=area_of_interest, max_date=min_search_date)
 
@@ -95,7 +98,7 @@ class ImageAcquisition(BaseConfig):
 
         self.historic_image = Image(
             path=results_output_location.full_path,
-            name=f'Historic_Image_{self.format_date_as_str(current_date=self.now, return_format="%Y%m%d")}',
+            name=historic_image_name,
             images_for_composition=hist_composition_images,
             compose_as_single_image=compose_as_single_image,
             mask=area_of_interest,

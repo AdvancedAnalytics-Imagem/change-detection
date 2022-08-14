@@ -16,8 +16,6 @@ from core.libs.ErrorManager import UnexistingGDBConnectionError
 
 class SessionManager(BasePath, BaseConfig):
     """Editing session of a database, supose to be activated every time a feature/table will be edited inside a database
-        Raises:
-            NotADatabase: Error for when an editing session is started and the target is not a database
     """
     session: Editor = None
     is_editing: bool = False
@@ -62,7 +60,7 @@ class SessionManager(BasePath, BaseConfig):
             return None
 
         if not self._current_session:
-            self._current_session = Editor(full_path=self.full_path)
+            self._current_session = Editor(self.full_path)
         
         return self._current_session
 
@@ -138,13 +136,13 @@ class Database(SessionManager):
 
         if not Exists(self.full_path):
             if self.name.endswith('.sde'):
-                raise UnexistingSDEConnectionError(sde=self.full_path)
+                raise UnexistingSDEConnectionError(sde=self.full_path, error=e)
             try:
                 if create:
                     CreateFileGDB_management(path, self.name)
                 else: raise
             except Exception as e:
-                raise UnexistingGDBConnectionError(gdb=self.full_path)
+                raise UnexistingGDBConnectionError(gdb=self.full_path, error=e)
         
         if self.feature_dataset:
             self.full_path = os.path.join(self.full_path, self.feature_dataset)
@@ -166,7 +164,7 @@ class Database(SessionManager):
             try:
                 CreateFeatureDataset_management(out_dataset_path=path, out_name=name, sr=sr)
             except Exception as e:
-                raise UnexistingFeatureDatasetError(feature_dataset=feature_dataset_full_path)
+                raise UnexistingFeatureDatasetError(feature_dataset=feature_dataset_full_path, error=e)
 
         self.feature_dataset = name
 
@@ -175,15 +173,15 @@ def wrap_on_database_editing(wrapped_function):
     def editor_wrapper(self, *args, **kwargs):
         if self.is_inside_database:
             self.database.start_editing()
-        else:
+        elif hasattr(self.temp_destination, 'start_editing'):
             self.temp_destination.start_editing()
 
         result = wrapped_function(self, *args, **kwargs)
         
         if self.is_inside_database:
             self.database.close_editing()
-        else:
-            self.temp_destination.start_editing()
+        elif hasattr(self.temp_destination, 'close_editing'):
+            self.temp_destination.close_editing()
 
         return result
     

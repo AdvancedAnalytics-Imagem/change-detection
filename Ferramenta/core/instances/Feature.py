@@ -21,7 +21,8 @@ from arcpy.management import AddField, CalculateField, Delete
 from core._logs import *
 from core.libs.Base import BasePath, load_path_and_name
 from core.libs.Enums import FieldType
-from core.libs.ErrorManager import MaxFailuresError, UnexistingFeatureError
+from core.libs.ErrorManager import (DatabaseInsertionError, MaxFailuresError,
+                                    UnexistingFeatureError)
 from core.ml_models.ImageClassifier import BaseImageClassifier
 from nbformat import ValidationError
 
@@ -50,8 +51,8 @@ def retry_failed_attempts(wrapped_function):
             _failed_ids = wrapped_function(*args, **kwargs)
             subsequent_failures += 1
 
-            if subsequent_failures > 20:
-                raise MaxFailuresError(method=wrapped_function.__name__, attempts=subsequent_failures)
+            if subsequent_failures > MaxFailuresError.max_failures:
+                MaxFailuresError(method=wrapped_function.__name__, attempts=subsequent_failures)
 
         return _failed_ids
     
@@ -95,7 +96,7 @@ class Feature(BaseDatabasePath, CursorManager):
     def __init__(self, path: str, name: str = None, raster: str = None, temp_destination: str or Database = None, *args, **kwargs):
         if temp_destination:
             if not isinstance(temp_destination, Database):
-                temp_destination = Database(temp_database)
+                temp_destination = Database(temp_destination)
             self.temp_destination = temp_destination
 
         if raster is not None:
@@ -336,7 +337,7 @@ class Feature(BaseDatabasePath, CursorManager):
                 dict: Fields that exist on current feature
         """
         all_fields = self.get_field_names(get_shape=False)
-        field_names = fields.keys()
+        field_names = list(fields.keys())
 
         for field_name in field_names:
             if field_name in all_fields:
@@ -395,6 +396,7 @@ class Feature(BaseDatabasePath, CursorManager):
                         reordered_data = self.map_data_to_field_structure(data=row_data, field_names=fields)
                         iCursor.insertRow(reordered_data)
                     except Exception as e:
+                        DatabaseInsertionError(error=e, table=self.full_path, data=row_data)
                         failed_ids.append(row_data)
             del iCursor
             self._current_batch = []
@@ -447,7 +449,10 @@ class Feature(BaseDatabasePath, CursorManager):
             [intersecting_feature, 0],
             [self.full_path, 1]
         ]
-        output = os.path.join(self.temp_destination.full_path, 'intersection')
+        output = os.path.join(self.temp_destination.full_path, f'intersection_{self.today_str}')
+        if Exists(output):
+            return output
+
         return Intersect(
             in_features=intersect_priority,
             out_feature_class=output,

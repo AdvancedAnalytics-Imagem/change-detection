@@ -13,7 +13,7 @@ from core.libs.ProgressTracking import ProgressTracker
 from core._logs import *
 from sentinelsat.exceptions import ServerError as SetinelServerError
 
-from .ErrorManager import FolderAccessError, MaxFailuresError
+from .ErrorManager import FolderAccessError, MaxFailuresError, UnexistingFeatureError
 
 
 def load_path_and_name(wrapped):
@@ -73,7 +73,7 @@ def prevent_server_error(wrapped_function):
 
 class BaseConfig:
     debug = True
-    batch_size = 4000
+    batch_size = 100000
     regular_sleep_time_seconds = 5
     progress_tracker: ProgressTracker = ProgressTracker()
     
@@ -163,7 +163,7 @@ class BasePath:
             try:
                 os.makedirs(path)
             except Exception as e:
-                raise FolderAccessError(folder=path)
+                raise FolderAccessError(folder=path, error=e)
 
         if subsequent_folders and not isinstance(subsequent_folders, list):
             subsequent_folders = [subsequent_folders]
@@ -174,7 +174,7 @@ class BasePath:
                 try:
                     os.makedirs(path)
                 except Exception as e:
-                    raise FolderAccessError(folder=path)
+                    raise FolderAccessError(folder=path, error=e)
 
         self.path = path
         return path
@@ -182,18 +182,24 @@ class BasePath:
     @staticmethod
     def get_list_of_valid_paths(items) -> list:
         valid_paths = []
-        for item in items:
-            path = item
-            if hasattr(item, 'full_path'):
-                path = item.full_path
-            if Exists(path):
-                valid_paths.append(path)
-        return valid_paths
+        if isinstance(items, list):
+            for item in items:
+                path = item
+                if hasattr(item, 'full_path'):
+                    path = item.full_path
+                if Exists(path):
+                    valid_paths.append(path)
+        elif items.exist and hasattr(items, 'full_path'):
+            valid_paths.append(items.full_path)
+        
+        if valid_paths:
+            return valid_paths
+        else:
+            raise UnexistingFeatureError(feature=items)
         
     @property
     def exists(self):
         return Exists(self.full_path)
-        # raise UnexistingFeatureError(feature=self.full_path)
         
     def get_files_by_extension(self, folder: str, extension: str = '.jp2', limit: int = 0) -> list:
         """List filed full path based on the desired extension
