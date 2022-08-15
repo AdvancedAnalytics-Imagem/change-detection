@@ -1,23 +1,24 @@
 # Polígono da área de interesse (feature class, .shp)
-target_area: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\CAESB_ChangeDetection\\test.shp"
+#target_area: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\CAESB_ChangeDetection\\test.shp"
+target_area: "D:\\arcgis-data\\MyProject\\MyProject.gdb\\teste"
 # Tabelas de destino dos resultados da classificação
-deteccao_de_mudancas: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca"
-classificacao_atual: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemAtual"
-classificacao_historica: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemHistorica"
+deteccao_de_mudancas: "D:\\data-img\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca"
+classificacao_atual: "D:\\data-img\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemAtual"
+classificacao_historica: "D:\\data-img\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemHistorica"
 # Mosaic dataset de destino das imagens finais (Caso mosaicadas e clipadas)
-output_mosaic_dataset_current: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\OutputImages.gdb\\Output_Images_A"
-output_mosaic_dataset_historic: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\OutputImages.gdb\\Output_Images_H"
+output_mosaic_dataset_current: "D:\\arcgis-data\\MyProject\\MyProject.gdb\\Output_Images_A"
+output_mosaic_dataset_historic: "D:\\arcgis-data\\MyProject\\MyProject.gdb\\Output_Images_H"
 # Pasta de armazenamento das imagens finais
-output_images_location: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\OutputImages.gdb"
+output_images_location: "D:\\arcgis-data\\MyProject\\MyProject.gdb"
 # Pastas temporárias
-temp_db: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\temp.gdb"
-temp_dir: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\temp"
-download_storage: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\downloads"
+temp_db: "D:\\arcgis-data\\MyProject\\temp.gdb"
+temp_dir: "D:\\arcgis-data\\MyProject\\temp"
+download_storage: "D:\\arcgis-data\\MyProject\\downloads"
 delete_temp_files: True
 # Parametros de Classificação
 max_cloud_coverage: 20
 sensor: "SENTINEL2"
-compose_as_single_image: False # Caso seja False, ao invés de mosaicar os tiles da área de interesse e clipar na região, os tiles serão processados em um Mosaic Dataset
+compose_as_single_image: True # Caso seja False, ao invés de mosaicar os tiles da área de interesse e clipar na região, os tiles serão processados em um Mosaic Dataset
 classification_arguments: "padding 70;batch_size 2;predict_background True;tile_size 256"
 classification_processor: "CPU"
 n_cores: 1
