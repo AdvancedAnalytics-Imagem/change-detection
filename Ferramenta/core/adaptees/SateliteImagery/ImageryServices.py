@@ -13,7 +13,7 @@ from core.instances.Feature import Feature
 from core.instances.Images import Image, SentinelImage
 from core.libs.Base import (BaseConfig, BasePath, ProgressTracker,
                             prevent_server_error)
-from core.ml_models.ImageClassifier import Sentinel2ImageClassifier
+from core.ml_models.ImageClassifier import Sentinel2ImageClassifier, BaseImageClassifier
 from nbformat import ValidationError
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
@@ -30,11 +30,27 @@ class BaseImageAcquisitionService(BasePath, BaseConfig):
         self.base_gbd = Database(path=IMAGERY_SERVICES_DIR, name=self.gdb_name)
         self.set_downloaded_images_path(path=downloads_folder)
     
-    def set_downloaded_images_path(self, path: str):
+    def set_downloaded_images_path(self, path: str) -> None:
         if path and not path.endswith('Downloaded_Images'): path = os.path.join(path, 'Downloaded_Images')
         self.images_folder = self.load_path_variable(path=path)
         aprint(f'Image Downloads Folder: {self.images_folder}', level=LogLevels.INFO)
+
     
+    def authenticate_api(self, *args, **kwargs) -> None:
+        pass
+    
+    @property    
+    def ml_model(self) -> BaseImageClassifier:
+        pass
+
+    def get_selected_tiles_names(self, *args, **kwargs) -> list:
+        pass
+
+    def query_available_images(self, *args, **kwargs) -> dict:
+        pass
+
+    def get_image(self, *args, **kwargs) -> list:
+        pass
 
 class Sentinel2(BaseImageAcquisitionService):
     _scene_min_coverage_threshold: float = 1.5
@@ -61,7 +77,7 @@ class Sentinel2(BaseImageAcquisitionService):
     def ml_model(self):
         return Sentinel2ImageClassifier()
 
-    def select_tiles(self, area_of_interest: Feature, where_clause: str = None) -> Feature:
+    def _select_tiles(self, area_of_interest: Feature, where_clause: str = None) -> Feature:
         if where_clause:
             area_of_interest.select_by_attributes(where_clause=where_clause)
         self.selected_tyles = Feature(path=self.tiles_layer.select_by_location(intersecting_feature=area_of_interest))
@@ -69,7 +85,7 @@ class Sentinel2(BaseImageAcquisitionService):
     
     def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None) -> list:
         if not self.selected_tyles:
-            self.select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
+            self._select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
         self.tile_names = [i[0] for i in SearchCursor(self.selected_tyles.full_path, ['NAME'])]
         aprint(f'Tiles selecionados:\n{",".join(self.tile_names)}')
         return self.tile_names
