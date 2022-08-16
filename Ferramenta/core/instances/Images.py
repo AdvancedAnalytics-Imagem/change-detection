@@ -21,8 +21,29 @@ from sentinelsat.exceptions import ServerError as SetinelServerError
 
 from .Feature import Feature
 
+class BaseSateliteImage(BasePath, BaseConfig):
+    title: str = None
+    datetime: datetime = None
+    date: date = None
+    tileid: str = None
+    properties: dict = None
+    uuid: str = ''
+    nodata_pixel_percentage_str: str = ''
+    cloudcoverpercentage: float = 1.0
 
-class SentinelImage(BasePath, BaseConfig):
+    @property
+    def nodata_pixel_percentage(self, *args, **kwargs) -> float:
+        pass
+    
+    @property
+    def cloud_coverage(self, *args, **kwargs) -> float:
+        return self.cloudcoverpercentage*100
+
+    def download_image(self, *args, **kwargs) -> None:
+        pass
+
+
+class SentinelImage(BaseSateliteImage):
     title: str = None
     datetime: datetime = None
     date: date = None
@@ -35,9 +56,9 @@ class SentinelImage(BasePath, BaseConfig):
         self.api = api
         self.__dict__.update(kwargs)
         self.nodata_pixel_percentage_str = ''
-        self.split_title_data()
+        self._split_title_data()
 
-    def split_title_data(self):
+    def _split_title_data(self):
         title_parts = self.title.split('_')
         self.tileid = title_parts[5][1:]
         self.datetime = datetime.strptime(title_parts[6], format('%Y%m%dT%H%M%S'))
@@ -46,31 +67,27 @@ class SentinelImage(BasePath, BaseConfig):
     def get(self, property: str):
         return self.properties.get(property)
 
-    @property
-    def cloud_coverage(self):
-        return self.cloudcoverpercentage*100
-
     # ---- Funções para buscar informações do nodata_pixel_percentage ----
     @property
-    def nodata_pixel_percentage(self):
-        if not self.nodata_pixel_percentage_str: self.fetch_s2_qi_info()
+    def nodata_pixel_percentage(self) -> float:
+        if not self.nodata_pixel_percentage_str: self._fetch_s2_qi_info()
         if self.nodata_pixel_percentage_str:
             try:
                 return float(self.nodata_pixel_percentage_str)
             except Exception as e:
                 aprint(f'Não foi possível converter o valor de nodata {self.nodata_pixel_percentage_str} para decimal (float).\n{e}')
         return 100
-    def get_odata_file_url(self, path: str) -> str:
+    def _get_odata_file_url(self, path: str) -> str:
         odata_path = f"{self.api.api_url}odata/v1/Products('{self.uuid}')"
         for p in path.split("/"):
             odata_path += f"/Nodes('{p}')"
         odata_path += "/$value"
         return odata_path
     @prevent_server_error
-    def fetch_s2_qi_info(self) -> None:
+    def _fetch_s2_qi_info(self) -> None:
         if self.api.is_online(self.uuid):
             path = f"{self.title}.SAFE/MTD_MSIL2A.xml"
-            url = self.get_odata_file_url(path)
+            url = self._get_odata_file_url(path)
             response = self.api.session.get(url)
             if '504 Gateway Time-out' in str(response.content):
                 raise SetinelServerError
@@ -84,10 +101,10 @@ class SentinelImage(BasePath, BaseConfig):
     # ---- Funções para buscar informações do nodata_pixel_percentage ----
     
     @prevent_server_error
-    def download(self, filter: list, downloads_folder: str) -> dict:
+    def _download(self, filter: list, downloads_folder: str) -> dict:
         return self.api.download(self.uuid, directory_path=downloads_folder, checksum=False, nodefilter=make_path_filter(filter))
 
-    def download_image(self, image_database: Database, downloads_folder: str, output_name: str = '', delete_temp_files: bool = False):
+    def download_image(self, image_database: Database, downloads_folder: str, output_name: str = '', delete_temp_files: bool = False) -> None:
         self.full_path = os.path.join(image_database.full_path, f'{output_name}_{self.format_date_as_str(current_date=self.date, return_format="%Y%m%d")}')
         images_folder = os.path.join(downloads_folder, self.filename)
 
@@ -100,7 +117,7 @@ class SentinelImage(BasePath, BaseConfig):
             
             downloaded_images = []
             for filter in filterList:
-                downloaded_images.append(self.download(filter=filter, downloads_folder=downloads_folder))
+                downloaded_images.append(self._download(filter=filter, downloads_folder=downloads_folder))
             if not downloaded_images: return
             self.unzip_files(folder=downloads_folder)
 
@@ -295,9 +312,9 @@ class Image(BasePath, BaseConfig):
             self.temp_destination.close_editing()
         self.processing_date = self.now
         polygon_path = f'{classified_raster_full_path}_polygon'
-        if Exist(polygon_path):
+        if Exists(polygon_path):
             return Feature(polygon_path)
-            
+
         feature = Feature(path=polygon_path, raster=classified_raster_full_path, temp_destination=self.temp_destination)
         feature.calculate_field(
             image_classifier=classifier,

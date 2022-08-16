@@ -83,64 +83,51 @@ class Configs(BasePath):
             target_area = GetParameterAsText(0)
             if target_area and self.target_area != target_area:
                 self.target_area = target_area
-            aprint(self.target_area, level=LogLevels.WARNING)
 
             deteccao_de_mudancas = GetParameterAsText(1)
             if deteccao_de_mudancas and self.deteccao_de_mudancas != deteccao_de_mudancas:
                 self.deteccao_de_mudancas = deteccao_de_mudancas
-            aprint(self.deteccao_de_mudancas, level=LogLevels.WARNING)
 
             classificacao_atual = GetParameterAsText(2)
             if classificacao_atual and self.classificacao_atual != classificacao_atual:
                 self.classificacao_atual = classificacao_atual
-            aprint(self.classificacao_atual, level=LogLevels.WARNING)
 
             classificacao_historica = GetParameterAsText(3)
             if classificacao_historica and self.classificacao_historica != classificacao_historica:
                 self.classificacao_historica = classificacao_historica
-            aprint(self.classificacao_historica, level=LogLevels.WARNING)
 
             output_images_location = GetParameterAsText(4)
             if output_images_location and self.output_images_location != output_images_location:
                 self.output_images_location = output_images_location
-            aprint(self.output_images_location, level=LogLevels.WARNING)
 
             output_mosaic_dataset_current = GetParameterAsText(5)
             if output_mosaic_dataset_current and self.output_mosaic_dataset_current != output_mosaic_dataset_current:
                 self.output_mosaic_dataset_current = output_mosaic_dataset_current
-            aprint(self.output_mosaic_dataset_current, level=LogLevels.WARNING)
 
             output_mosaic_dataset_historic = GetParameterAsText(6)
             if output_mosaic_dataset_historic and self.output_mosaic_dataset_historic != output_mosaic_dataset_historic:
                 self.output_mosaic_dataset_historic = output_mosaic_dataset_historic
-            aprint(self.output_mosaic_dataset_historic, level=LogLevels.WARNING)
 
             max_cloud_coverage = GetParameter(7)
             if max_cloud_coverage and self.max_cloud_coverage != max_cloud_coverage:
                 self.max_cloud_coverage = max_cloud_coverage
-            aprint(self.max_cloud_coverage, level=LogLevels.WARNING)
 
             temp_dir = GetParameterAsText(8)
             if temp_dir and self.temp_dir != temp_dir:
                 self.temp_dir = temp_dir
-            aprint(self.temp_dir, level=LogLevels.WARNING)
 
             download_storage = GetParameterAsText(9)
             if download_storage and self.download_storage != download_storage:
                 self.download_storage = download_storage
-            aprint(self.download_storage, level=LogLevels.WARNING)
 
             delete_temp_files = GetParameter(10)
             if delete_temp_files and self.delete_temp_files != delete_temp_files:
                 self.delete_temp_files = delete_temp_files
-            aprint(self.delete_temp_files, level=LogLevels.WARNING)
 
             classification_processor = GetParameterAsText(11)
             if classification_processor and self.classification_processor != classification_processor:
                 self.classification_processor = classification_processor
-            aprint(self.classification_processor, level=LogLevels.WARNING)
 
             classification_arguments = GetParameterAsText(12)
             if classification_arguments and self.classification_arguments != classification_arguments:
                 self.classification_arguments = classification_arguments
-            aprint(self.classification_arguments, level=LogLevels.WARNING)
