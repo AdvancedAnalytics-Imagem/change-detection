@@ -1,6 +1,9 @@
 import json
 import logging
 import os
+import urllib
+from concurrent import futures
+from concurrent.futures.thread import ThreadPoolExecutor
 import pandas as pd
 import requests
 from datetime import datetime
@@ -26,7 +29,7 @@ class CBERSImageryService(BaseImageAcquisitionService):
         self.tiles_layer = Feature(path=self.base_gbd.full_path, name=self.__tiles_layer_name)
         self.images_database = Database(path=os.path.dirname(self.images_folder), name='CBERS_IMAGES')
 
-    def get_images_metadata(self, area, initial_date, final_date, cloud_cover=__DEFAULT_CLOUD_COVER):
+    def get_images_metadata(self, area: [], initial_date: datetime, final_date: datetime, cloud_cover: int = __DEFAULT_CLOUD_COVER) -> pd.DataFrame:
         logging.debug(f'Coordenadas da área: {area}\n'
                       f'Cobertura de nuvens: {cloud_cover}\n'
                       f'Data inicial: {initial_date.strftime("%d/%m/%Y")}\n'
@@ -71,3 +74,38 @@ class CBERSImageryService(BaseImageAcquisitionService):
                     'nir_url': f"{scene['assets']['nir']['href']}?email={CBERSImageryService.__CBERS_USER}"
                 })
             return pd.DataFrame(scenes).sort_values(by=['cloudcover', 'datetime'], ascending=[True, False])
+
+    def download_images(self, metadata: pd.DataFrame, download_folder: str) -> None:
+        with ThreadPoolExecutor(max_workers=5) as threads:
+            for index, row in metadata.iterrows():
+                pan_thread = threads.submit(self.__download_worker, row['id'], row['pan_url'], download_folder, 'pan')
+                red_thread = threads.submit(self.__download_worker, row['id'], row['red_url'], download_folder, 'red')
+                green_thread = threads.submit(self.__download_worker, row['id'], row['green_url'], download_folder, 'green')
+                blue_thread = threads.submit(self.__download_worker, row['id'], row['blue_url'], download_folder, 'blue')
+                nir_thread = threads.submit(self.__download_worker, row['id'], row['nir_url'], download_folder, 'nir')
+                futures.wait([pan_thread, red_thread, green_thread, blue_thread, nir_thread])
+                if pan_thread.exception() is not None:
+                    raise Exception(f'Falha ao baixar a imagem PAN', str(pan_thread.exception()))
+                if red_thread.exception() is not None:
+                    raise Exception(f'Falha ao baixar a imagem RED', str(red_thread.exception()))
+                if green_thread.exception() is not None:
+                    raise Exception(f'Falha ao baixar a imagem GREEN', str(green_thread.exception()))
+                if blue_thread.exception() is not None:
+                    raise Exception(f'Falha ao baixar a imagem BLUE', str(blue_thread.exception()))
+                if nir_thread.exception() is not None:
+                    raise Exception(f'Falha ao baixar a imagem NIR', str(nir_thread.exception()))
+
+    def __download_worker(self, id: str, url: str, folder: str, image_type: str) -> None:
+        filepath = f"{folder}\\{id}.tif"
+        if image_type == 'pan':
+            filepath = f"{folder}\\p_{id}.tif"
+        elif image_type == 'red':
+            filepath = f"{folder}\\r_{id}.tif"
+        elif image_type == 'green':
+            filepath = f"{folder}\\g_{id}.tif"
+        elif image_type == 'blue':
+            filepath = f"{folder}\\b_{id}.tif"
+        elif image_type == 'nir':
+            filepath = f"{folder}\\n_{id}.tif"
+        logging.debug(f'Baixando imagem {id} => {filepath}')
+        urllib.request.urlretrieve(url, filepath)
