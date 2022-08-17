@@ -20,7 +20,7 @@ class CBERSImageryService(BaseImageAcquisitionService):
     __CLEAR_OUTPUT_IMAGES = 180
     __CBERS_URL = 'http://www2.dgi.inpe.br/stac-compose/stac/search/'
     __CBERS_USER = 'caesb_testes@outlook.com'
-    __CBER_SENSOR = 'WPM1'
+    __CBER_SENSOR = 'WPM'
     __CBER_OUTPUT = ''
     __tiles_layer_name: str = 'grade_cbers_brasil'
 
