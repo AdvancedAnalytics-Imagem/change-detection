@@ -29,9 +29,9 @@ class CBERSImageryService(BaseImageAcquisitionService):
         self.tiles_layer = Feature(path=self.base_gbd.full_path, name=self.__tiles_layer_name)
         self.images_database = Database(path=os.path.dirname(self.images_folder), name='CBERS_IMAGES')
 
-    def get_images_metadata(self, area: [], initial_date: datetime, final_date: datetime, cloud_cover: int = __DEFAULT_CLOUD_COVER) -> pd.DataFrame:
+    def __get_images_metadata(self, area: [], initial_date: datetime, final_date: datetime) -> pd.DataFrame:
         logging.debug(f'Coordenadas da área: {area}\n'
-                      f'Cobertura de nuvens: {cloud_cover}\n'
+                      f'Cobertura de nuvens: {CBERSImageryService.__DEFAULT_CLOUD_COVER}\n'
                       f'Data inicial: {initial_date.strftime("%d/%m/%Y")}\n'
                       f'Data final: {final_date.strftime("%d/%m/%Y")}')
         payload = json.dumps({
@@ -47,7 +47,7 @@ class CBERSImageryService(BaseImageAcquisitionService):
                         {"name": "CBERS4A_MUX_L2_DN"}
                     ],
                     "method": "POST",
-                    "query": {"cloud_cover": {"lte": cloud_cover}}
+                    "query": {"cloud_cover": {"lte": CBERSImageryService.__DEFAULT_CLOUD_COVER}}
                 }
             ],
             "bbox": area,
@@ -75,7 +75,8 @@ class CBERSImageryService(BaseImageAcquisitionService):
                 })
             return pd.DataFrame(scenes).sort_values(by=['cloudcover', 'datetime'], ascending=[True, False])
 
-    def download_images(self, metadata: pd.DataFrame, download_folder: str) -> None:
+    def download_images(self, area: [], initial_date: datetime, final_date: datetime, download_folder: str) -> None:
+        metadata = self.__get_images_metadata(area, initial_date, final_date)
         with ThreadPoolExecutor(max_workers=5) as threads:
             for index, row in metadata.iterrows():
                 pan_thread = threads.submit(self.__download_worker, row['id'], row['pan_url'], download_folder, 'pan')
