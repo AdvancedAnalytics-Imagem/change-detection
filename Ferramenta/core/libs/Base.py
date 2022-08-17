@@ -189,7 +189,7 @@ class BasePath:
                     path = item.full_path
                 if Exists(path):
                     valid_paths.append(path)
-        elif items.exist and hasattr(items, 'full_path'):
+        elif items.exists and hasattr(items, 'full_path'):
             valid_paths.append(items.full_path)
         
         if valid_paths:

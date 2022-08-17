@@ -9,7 +9,6 @@ from core.configs.Configs import Configs
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 
-aprint(message='Iniciando Execução - v1.12', level=LogLevels.INFO)
 variables = Configs()
 
 def get_images():
@@ -84,20 +83,20 @@ def main():
         tile_names = ', '.join(images.service.tile_names)
         variables.classificacao_atual.append_dataset(origin=current_classification, extra_constant_values={
             'DATA':images.current_image.date_created,
-            'DATA_PROC':datetime.datetime.now(),
+            'DATA_PROC':datetime.now(),
             'SENSOR':variables.sensor,
             'TILES':tile_names
         })
         variables.classificacao_historica.append_dataset(origin=historic_classification, extra_constant_values={
             'DATA':images.historic_image.date_created,
-            'DATA_PROC':datetime.datetime.now(),
+            'DATA_PROC':datetime.now(),
             'SENSOR':variables.sensor,
             'TILES':tile_names
         })
         variables.deteccao_de_mudancas.append_dataset(origin=change_detection, extra_constant_values={
             'DATA_A':images.current_image.date_created,
             'DATA_H':images.historic_image.date_created,
-            'DATA_PROC':datetime.datetime.now(),
+            'DATA_PROC':datetime.now(),
             'SENSOR':variables.sensor,
             'TILES':tile_names
         })
