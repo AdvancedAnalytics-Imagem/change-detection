@@ -11,17 +11,18 @@ from core._constants import *
 from core._logs import *
 from core.libs.Base import (BaseConfig, BasePath, ProgressTracker,
                             load_path_and_name)
-from core.libs.ErrorManager import UnexistingGDBConnectionError
+from core.libs.ErrorManager import (SavingEditingSessionError,
+                                    UnexistingFeatureDatasetError,
+                                    UnexistingGDBConnectionError,
+                                    UnexistingSDEConnectionError)
 
 
 class SessionManager(BasePath, BaseConfig):
-    """Editing session of a database, supose to be activated every time a feature/table will be edited inside a database
-    """
+    """Editing session of a database, supose to be activated every time a feature/table will be edited inside a database"""
     session: Editor = None
     is_editing: bool = False
     _previous_workspace: str = None
     _current_session: Editor = None
-    full_path: str = None
     
     def __init__(self, *args, **kwargs):
         super(SessionManager, self).__init__(*args, **kwargs)
@@ -36,7 +37,7 @@ class SessionManager(BasePath, BaseConfig):
         
     @property
     def is_sde(self) -> bool:
-        return self.full_path.endswith('.sde')
+        return '.sde' in self.full_path
 
     def set_env_configs(self) -> None:
         arcpy_env.addOutputsToMap = False
@@ -115,13 +116,11 @@ class Database(SessionManager):
                 name (str, optional): GDB/SDE name. Defaults to None
                 create (bool, optional): Option to create a GDB if it doesn't exist. Defaults to True
             Raises:
-                UnexistingSDEConnectionError
-                UnexistingGDBConnectionError
+                UnexistingSDEConnectionError; UnexistingGDBConnectionError
         """
         if path == 'IN_MEMORY':
             self.name = ''
             self.path = path
-            self.full_path = path
             return
 
         if '.sde' not in self.full_path and '.gdb' not in self.full_path:
@@ -145,7 +144,7 @@ class Database(SessionManager):
                 raise UnexistingGDBConnectionError(gdb=self.full_path, error=e)
         
         if self.feature_dataset:
-            self.full_path = os.path.join(self.full_path, self.feature_dataset)
+            self.feature_dataset_full_path = os.path.join(self.full_path, self.feature_dataset)
 
     @load_path_and_name
     def load_featureDataset_variable(self, path : str, name : str, sr : int = 4326) -> None:
@@ -218,5 +217,3 @@ class BaseDatabasePath(BasePath):
 
             if self.database:
                 self.path = self.database.full_path
-        
-        self.full_path = os.path.join(self.path, self.name)
