@@ -9,6 +9,7 @@ from core.configs.Configs import Configs
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 
+aprint(message='Iniciando Execução - v1.14', level=LogLevels.INFO)
 variables = Configs()
 
 def get_images():
@@ -41,7 +42,7 @@ def classify_image(image = None, ml_model = None):
 
 def detect_changes(current, historic):
     aprint(message='Detectando Mudanças Imagens', progress=True)
-    change_detection = Feature(path=historic.intersects(intersecting_feature=current))
+    change_detection = Feature(path=current.intersects(intersecting_feature=historic))
     change_detection.calculate_field(
         field_name="DIFF",
         field_value=int,
