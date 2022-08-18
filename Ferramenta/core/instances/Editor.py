@@ -5,8 +5,9 @@ from arcpy import Extent, ListTransformations, SpatialReference
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from core._constants import *
 from core.libs.Base import BaseConfig
-from .Database import Database, wrap_on_database_editing
-from core.libs.ErrorManager import SavingEditingSessionError
+from core.libs.ErrorManager import NotInADatabase, SavingEditingSessionError
+
+from .Database import Database
 
 # TODO Create transformation manager for insert cursor
 # class TransformationManager(BaseConfig):
@@ -31,16 +32,10 @@ class CurrentCursor:
 
 class CursorManager(BaseConfig):
     current_cursor = None
-    full_path: str = None
     database: Database = None
 
-    def __init__(self, full_path: str = None): # TODO I don't think this is used
-        print(f'Initiating Cursor Manager: {self.full_path}')
-        if not self.full_path and full_path:
-            self.full_path = full_path
-
-    @wrap_on_database_editing
     def insert_cursor(self, fields: list = ['*'], datum_transformation: ListTransformations = None) -> dict:
+        self.database.start_editing()
         insert_cursor_args = {
             'in_table':self.full_path,
             'field_names':fields,
@@ -49,8 +44,8 @@ class CursorManager(BaseConfig):
         self.current_cursor = CurrentCursor(method=InsertCursor, **insert_cursor_args)
         return self.current_cursor.open_cursor()
 
-    @wrap_on_database_editing
     def update_cursor(self, fields: list = ['*'], where_clause: str = None, spatial_reference: SpatialReference = None, explode_to_points: bool = False, sql_clause: tuple = (None, None), datum_transformation: ListTransformations = None) -> dict:
+        self.database.start_editing()
         update_cursor_args = {
             'in_table':self.full_path,
             'field_names':fields,
