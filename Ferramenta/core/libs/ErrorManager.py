@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 #!/usr/bin/python
 import sys
+import traceback
 
 from core._logs import *
 
@@ -13,6 +14,8 @@ class Error(Exception):
         aprint(message, level=LogLevels.CRITICAL)
         if self.interrupt_execution:
             aprint('Interrompendo execução', level=LogLevels.WARNING)
+
+            aprint(traceback.format_exc(), level=LogLevels.DEBUG)
             sys.exit()
 
 class FolderAccessError(Error):
@@ -96,3 +99,12 @@ class DatabaseInsertionError(Error):
         self.data = data
         self.table = table
         self.message = f'Erro ao inserir dados na tabela {table}.\n{error}.\n{data}'
+        super().__init__(self.message)
+
+class InvalidPathError(Error):
+    """Error manager for a full path requested to an object without a set path"""
+
+    def __init__(self, object):
+        self.object = object
+        self.message = f'Não foi possível encontrar o caminho, atributo "path" não configurado.\n{object.__dict__}'
+        super().__init__(self.message)
