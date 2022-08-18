@@ -28,28 +28,30 @@ class BaseSateliteImage(BasePath, BaseConfig):
     tileid: str = None
     properties: dict = None
     uuid: str = ''
-    nodata_pixel_percentage_str: str = ''
     cloudcoverpercentage: float = 1.0
 
     @property
     def nodata_pixel_percentage(self, *args, **kwargs) -> float:
+        """Satelite images have areas of no data availability, which is represented by this parameter
+            Returns:
+                float: Percentage of image coverage in decimal form -> 1.2 % means 1.2 % of the image has no coverage
+        """
         pass
     
     @property
     def cloud_coverage(self, *args, **kwargs) -> float:
+        """For images that are not Radar or Lidar based, this parameter should return the cloud coverage percentage
+            Returns:
+                float: Percentage -> 10.5% (Originates from cloudcoverpercentage that stores the percentage in decimal form -> 0.105)
+        """
         return self.cloudcoverpercentage*100
 
     def download_image(self, *args, **kwargs) -> None:
+        """Downloads each band on the image and composes all as one, and deletes the original download folder"""
         pass
 
 
 class SentinelImage(BaseSateliteImage):
-    title: str = None
-    datetime: datetime = None
-    date: date = None
-    tileid: str = None
-    properties: dict = None
-    uuid: str = ''
     nodata_pixel_percentage_str: str = ''
 
     def __init__(self, api: any, *args, **kwargs):
