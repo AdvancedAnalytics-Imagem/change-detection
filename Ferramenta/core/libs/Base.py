@@ -150,6 +150,9 @@ class BasePath:
             raise InvalidPathError(object=self)
         if not self.name:
             return self.path
+        if hasattr(self, 'database') and self.database:
+            if self.database.feature_dataset:
+                return os.path.join(self.database.feature_dataset_full_path, self.name)
         return os.path.join(self.path, self.name)
 
     def load_base_path_variables(self, path: str):

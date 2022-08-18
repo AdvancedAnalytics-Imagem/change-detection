@@ -237,10 +237,13 @@ class Feature(BaseDatabasePath, CursorManager):
             Returns:
                 list: Field names
         """
-        field_names = [field.name for field in ListFields(self.full_path) if
-            field.name != self.OIDField and
-            self.shape_field not in field.name
-        ]
+        try:
+            field_names = [field.name for field in ListFields(self.full_path) if
+                field.name != self.OIDField and
+                self.shape_field not in field.name
+            ]
+        except Exception as e:
+            print(e)
 
         if self.shape_field and get_shape:
             field_names.append('SHAPE@')
@@ -376,25 +379,25 @@ class Feature(BaseDatabasePath, CursorManager):
         self.progress_tracker.init_tracking(total=total_records, name='Append Data')
 
         for row_data in origin.iterate_feature(where_clause=where_clause, format=dict):
-            self.insert_row(data={**row_data, **extra_constant_values}, fields=fields)
-            self.progress_tracker.report_progress(add_progress=True)
+            reordered_data = self.map_data_to_field_structure(data={**row_data, **extra_constant_values}, field_names=fields)
+            self.insert_row(data=reordered_data, fields=fields)
             
-        self.insert_row(data=row_data, fields=fields, _remaining_records=True)
+        self.insert_row(data=reordered_data, fields=fields, _remaining_records=True)
 
     @retry_failed_attempts
     def insert_row(self, data: list, fields: list, _remaining_records: bool = False):
-        if isinstance(data, list):
+        if isinstance(data, list) and isinstance(data[0], list):
             self._current_batch.extend(data)
         else:
             self._current_batch.append(data)
-
         failed_ids = []
+
         if (self._current_batch and len(self._current_batch)%self.batch_size == 0) or _remaining_records:
             with self.insert_cursor(fields) as iCursor:
                 for row_data in self._current_batch:
                     try:
-                        reordered_data = self.map_data_to_field_structure(data=row_data, field_names=fields)
-                        iCursor.insertRow(reordered_data)
+                        iCursor.insertRow(row_data)
+                        self.progress_tracker.report_progress(add_progress=True)
                     except Exception as e:
                         DatabaseInsertionError(error=e, table=self.full_path, data=row_data)
                         failed_ids.append(row_data)
@@ -449,7 +452,8 @@ class Feature(BaseDatabasePath, CursorManager):
             [intersecting_feature, 0],
             [self.full_path, 1]
         ]
-        output = os.path.join(self.temp_destination.full_path, f'intersection_{self.today_str}')
+        path = self.temp_destination.full_path if hasattr(self.temp_destination, 'full_path') else self.temp_destination
+        output = os.path.join(path, f'intersection_{self.today_str}')
         if Exists(output):
             return output
 
