@@ -54,7 +54,7 @@ class ImageAcquisition(BaseConfig):
         current_images = {}
         current_image_name = f'Current_Image_{self.today_str}'
 
-        if not Exists(os.path.join(results_output_location.full_path, current_image_name)):
+        if not Exists(os.path.join(results_output_location.full_path, f'Stch_Msk_Mos_{current_image_name}')):
             self.service.query_available_images(area_of_interest=area_of_interest)
 
             for tile in intersecting_tiles:
@@ -83,7 +83,7 @@ class ImageAcquisition(BaseConfig):
         else:
             self.current_image = Image(
                 path=results_output_location.full_path,
-                name=current_image_name,
+                name=f'Stch_Msk_Mos_{current_image_name}',
                 temp_destination=self.temp_destination
             )
             tiles_max_date = self.today
@@ -96,7 +96,7 @@ class ImageAcquisition(BaseConfig):
         historic_image_name = f'Historic_Image_{self.today_str}'
         min_search_date = tiles_max_date - timedelta(days=30)
 
-        if not Exists(os.path.join(results_output_location.full_path, historic_image_name)):
+        if not Exists(os.path.join(results_output_location.full_path, f'Stch_Msk_Mos_{historic_image_name}')):
             self.service.query_available_images(area_of_interest=area_of_interest, max_date=min_search_date)
 
             for tile in intersecting_tiles:
@@ -122,7 +122,7 @@ class ImageAcquisition(BaseConfig):
         else:
             self.historic_image = Image(
                 path=results_output_location.full_path,
-                name=historic_image_name,
+                name=f'Stch_Msk_Mos_{historic_image_name}',
                 temp_destination=self.temp_destination
             )
             hist_tiles_max_date = min_search_date
