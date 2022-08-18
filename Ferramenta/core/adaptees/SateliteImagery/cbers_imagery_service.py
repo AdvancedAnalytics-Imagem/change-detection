@@ -78,6 +78,7 @@ class CBERSImageryService(BaseImageAcquisitionService):
     def download_images(self, area: [], initial_date: datetime, final_date: datetime, download_folder: str) -> None:
         metadata = self.__get_images_metadata(area, initial_date, final_date)
         with ThreadPoolExecutor(max_workers=5) as threads:
+            print('Iniciando downloads')
             for index, row in metadata.iterrows():
                 pan_thread = threads.submit(self.__download_worker, row['id'], row['pan_url'], download_folder, 'pan')
                 red_thread = threads.submit(self.__download_worker, row['id'], row['red_url'], download_folder, 'red')
@@ -95,6 +96,7 @@ class CBERSImageryService(BaseImageAcquisitionService):
                     raise Exception(f'Falha ao baixar a imagem BLUE', str(blue_thread.exception()))
                 if nir_thread.exception() is not None:
                     raise Exception(f'Falha ao baixar a imagem NIR', str(nir_thread.exception()))
+            print('Downloads finalizados')
 
     def __download_worker(self, id: str, url: str, folder: str, image_type: str) -> None:
         filepath = f"{folder}\\{id}.tif"
@@ -109,4 +111,5 @@ class CBERSImageryService(BaseImageAcquisitionService):
         elif image_type == 'nir':
             filepath = f"{folder}\\n_{id}.tif"
         logging.debug(f'Baixando imagem {id} => {filepath}')
+        print(f'Baixando imagem {id} => {filepath}')
         urllib.request.urlretrieve(url, filepath)
