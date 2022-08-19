@@ -370,14 +370,15 @@ class Feature(BaseDatabasePath, CursorManager):
         if extra_constant_values:
             extra_constant_values = self.look_for_missing_fields(extra_constant_values)
 
-        fields = self.get_field_names()
+        fields = list(self.get_field_names())
         
         total_records = origin.row_count()
+        
+        self._current_batch = []
         aprint(f'Anexando {total_records} de {origin.name} em {self.name}')
         if not self.batch_size: self.batch_size = total_records
 
         self.progress_tracker.init_tracking(total=total_records, name='Append Data')
-
         for row_data in origin.iterate_feature(where_clause=where_clause, format=dict):
             reordered_data = self.map_data_to_field_structure(data={**row_data, **extra_constant_values}, field_names=fields)
             self.insert_row(data=reordered_data, fields=fields)
@@ -395,6 +396,9 @@ class Feature(BaseDatabasePath, CursorManager):
         if (self._current_batch and len(self._current_batch)%self.batch_size == 0) or _remaining_records:
             with self.insert_cursor(fields) as iCursor:
                 for row_data in self._current_batch:
+                    if not isinstance(row_data, list):
+                        continue
+
                     try:
                         iCursor.insertRow(row_data)
                         self.progress_tracker.report_progress(add_progress=True)
@@ -407,7 +411,7 @@ class Feature(BaseDatabasePath, CursorManager):
 
         return failed_ids
 
-    def create_polygon_from_raster(self, raster: str or Image, path: str, name: str, raster_field: str = "Value"):
+    def create_polygon_from_raster(self, raster: str, path: str, name: str, raster_field: str = "Value"):
         if not isinstance(raster, str) and hasattr(raster, 'full_path'):
             raster = raster.full_path
         if not Exists(raster):
