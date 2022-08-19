@@ -32,8 +32,15 @@ class CBERSImageryService(BaseImageAcquisitionService):
         self.images_database = Database(path=os.path.dirname(self.images_folder), name='CBERS_IMAGES')
 
     def compose_image(self, files, download_folder: str):
-        out_img = f"{download_folder}\\compose.tif"
-        arcpy.management.CompositeBands(';'.join(files), out_img)
+        for file_id in files.keys():
+            out_img = f"{download_folder}\\{file_id}_compose.tif"
+            filepaths = [
+                files[file_id]['nir_img'],
+                files[file_id]['red_img'],
+                files[file_id]['green_img'],
+                files[file_id]['blue_img']
+            ]
+            arcpy.management.CompositeBands(';'.join(filepaths), out_img)
 
     def __get_images_metadata(self, area: [], initial_date: datetime, final_date: datetime) -> pd.DataFrame:
         logging.debug(f'Coordenadas da área: {area}\n'
@@ -83,26 +90,24 @@ class CBERSImageryService(BaseImageAcquisitionService):
 
     def download_images(self, area: [], initial_date: datetime, final_date: datetime, download_folder: str) -> None:
         metadata = self.__get_images_metadata(area, initial_date, final_date)
+        files = {}
+        for index, row in metadata.iterrows():
+            files[row['id']] = {
+                'pan_img': f"{download_folder}\\p_{row['id']}.tif",
+                'red_img': f"{download_folder}\\r_{row['id']}.tif",
+                'green_img': f"{download_folder}\\g_{row['id']}.tif",
+                'blue_img': f"{download_folder}\\b_{row['id']}.tif",
+                'nir_img': f"{download_folder}\\n_{row['id']}.tif"
+            }
         with ThreadPoolExecutor(max_workers=5) as threads:
             print('Iniciando downloads')
-            files = []
             thread_list = []
-            for index, row in metadata.iterrows():
-                filepath = f"{download_folder}\\p_{row['id']}.tif"
-                files.append(filepath)
-                thread_list.append(threads.submit(self.__download_worker, row['id'], row['pan_url'], filepath))
-                filepath = f"{download_folder}\\r_{row['id']}.tif"
-                files.append(filepath)
-                thread_list.append(threads.submit(self.__download_worker, row['id'], row['red_url'], filepath))
-                filepath = f"{download_folder}\\g_{row['id']}.tif"
-                files.append(filepath)
-                thread_list.append(threads.submit(self.__download_worker, row['id'], row['green_url'], filepath))
-                filepath = f"{download_folder}\\b_{row['id']}.tif"
-                files.append(filepath)
-                thread_list.append(threads.submit(self.__download_worker, row['id'], row['blue_url'], filepath))
-                filepath = f"{download_folder}\\n_{row['id']}.tif"
-                files.append(filepath)
-                thread_list.append(threads.submit(self.__download_worker, row['id'], row['nir_url'], filepath))
+            for file_data in files.values():
+                thread_list.append(threads.submit(self.__download_worker, row['id'], row['pan_url'], file_data['pan_img']))
+                thread_list.append(threads.submit(self.__download_worker, row['id'], row['red_url'], file_data['red_img']))
+                thread_list.append(threads.submit(self.__download_worker, row['id'], row['green_url'], file_data['green_img']))
+                thread_list.append(threads.submit(self.__download_worker, row['id'], row['blue_url'], file_data['blue_img']))
+                thread_list.append(threads.submit(self.__download_worker, row['id'], row['nir_url'], file_data['nir_img']))
                 futures.wait(thread_list)
                 for thread in thread_list:
                     if thread.exception() is not None:
