@@ -87,14 +87,19 @@ class CBERSImageryService(BaseImageAcquisitionService):
                 nir_thread = threads.submit(self.__download_worker, row['id'], row['nir_url'], download_folder, 'nir')
                 futures.wait([pan_thread, red_thread, green_thread, blue_thread, nir_thread])
                 if pan_thread.exception() is not None:
+                    self.__erase_image(row['id'])
                     raise Exception(f'Falha ao baixar a imagem PAN', str(pan_thread.exception()))
                 if red_thread.exception() is not None:
+                    self.__erase_image(row['id'])
                     raise Exception(f'Falha ao baixar a imagem RED', str(red_thread.exception()))
                 if green_thread.exception() is not None:
+                    self.__erase_image(row['id'])
                     raise Exception(f'Falha ao baixar a imagem GREEN', str(green_thread.exception()))
                 if blue_thread.exception() is not None:
+                    self.__erase_image(row['id'])
                     raise Exception(f'Falha ao baixar a imagem BLUE', str(blue_thread.exception()))
                 if nir_thread.exception() is not None:
+                    self.__erase_image(row['id'])
                     raise Exception(f'Falha ao baixar a imagem NIR', str(nir_thread.exception()))
             print('Downloads finalizados')
 
@@ -113,3 +118,12 @@ class CBERSImageryService(BaseImageAcquisitionService):
         logging.debug(f'Baixando imagem {id} => {filepath}')
         print(f'Baixando imagem {id} => {filepath}')
         urllib.request.urlretrieve(url, filepath)
+
+    def __erase_image(self, folder: str, id: str) -> None:
+        try:
+            for prefix in ['p_', 'r_', 'g_', 'b_', 'n_']:
+                filepath = f"{folder}\\{prefix}{id}.tif"
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+        except:
+            pass
