@@ -14,4 +14,5 @@ endDate = datetime.datetime(2022, 8, 2)
 folder = 'D:\\data'
 
 cbers = CBERSImageryService()
-cbers.download_images(area, beginDate, endDate, folder)
+files = cbers.download_images(area, beginDate, endDate, folder)
+cbers.compose_image(files, folder)
