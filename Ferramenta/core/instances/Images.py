@@ -28,28 +28,30 @@ class BaseSateliteImage(BasePath, BaseConfig):
     tileid: str = None
     properties: dict = None
     uuid: str = ''
-    nodata_pixel_percentage_str: str = ''
     cloudcoverpercentage: float = 1.0
 
     @property
     def nodata_pixel_percentage(self, *args, **kwargs) -> float:
+        """Satelite images have areas of no data availability, which is represented by this parameter
+            Returns:
+                float: Percentage of image coverage in decimal form -> 1.2 % means 1.2 % of the image has no coverage
+        """
         pass
     
     @property
     def cloud_coverage(self, *args, **kwargs) -> float:
+        """For images that are not Radar or Lidar based, this parameter should return the cloud coverage percentage
+            Returns:
+                float: Percentage -> 10.5% (Originates from cloudcoverpercentage that stores the percentage in decimal form -> 0.105)
+        """
         return self.cloudcoverpercentage*100
 
     def download_image(self, *args, **kwargs) -> None:
+        """Downloads each band on the image and composes all as one, and deletes the original download folder"""
         pass
 
 
 class SentinelImage(BaseSateliteImage):
-    title: str = None
-    datetime: datetime = None
-    date: date = None
-    tileid: str = None
-    properties: dict = None
-    uuid: str = ''
     nodata_pixel_percentage_str: str = ''
 
     def __init__(self, api: any, *args, **kwargs):
@@ -105,10 +107,12 @@ class SentinelImage(BaseSateliteImage):
         return self.api.download(self.uuid, directory_path=downloads_folder, checksum=False, nodefilter=make_path_filter(filter))
 
     def download_image(self, image_database: Database, downloads_folder: str, output_name: str = '', delete_temp_files: bool = False) -> None:
-        self.full_path = os.path.join(image_database.full_path, f'{output_name}_{self.format_date_as_str(current_date=self.date, return_format="%Y%m%d")}')
+        self.path = image_database.full_path
+        self.name = f'{output_name}_{self.format_date_as_str(current_date=self.date, return_format="%Y%m%d")}'
+        
         images_folder = os.path.join(downloads_folder, self.filename)
 
-        if not Exists(self.full_path):
+        if not self.exists:
             filterB2 = "*_B02_10m*"
             filterB3 = "*_B03_10m*"
             filterB4 = "*_B04_10m*"
@@ -159,8 +163,8 @@ class Image(BasePath, BaseConfig):
     def is_inside_database(self):
         return self.database is not None
     
+    # @delete_source_files
     @wrap_on_database_editing
-    @delete_source_files
     def mosaic_images(self, images_for_composition: list, compose_as_single_image: bool) -> str:
         list_of_images_paths = self.get_list_of_valid_paths(items=images_for_composition)
 
@@ -168,23 +172,21 @@ class Image(BasePath, BaseConfig):
             image = list_of_images_paths[0]
             self.name = os.path.basename(image)
             self.path = os.path.dirname(image)
-            self.full_path = image
             return self.full_path
 
         self.name = f'{self._mosaic_prefix}{self.name}'
-        self.full_path = os.path.join(self.database.full_path, self.name)
         
         if not compose_as_single_image:
             self.mosaic_dataset = MosaicDataset(path=self.full_path, images_for_composition=list_of_images_paths)
-            self.full_path = self.mosaic_dataset.full_path
+            self.path = os.path.dirname(self.mosaic_dataset.full_path)
 
-        if Exists(self.full_path):
+        if self.exists:
             return self.full_path
 
-        aprint(f'Criando Mosaico em {self.database.full_path}')
+        aprint(f'Criando Mosaico em {self.path}')
         MosaicToNewRaster(
             input_rasters=list_of_images_paths,
-            output_location=self.database.full_path,
+            output_location=self.path,
             raster_dataset_name_with_extension=self.name,
             number_of_bands=4,
             pixel_type='16_BIT_UNSIGNED',
@@ -195,55 +197,52 @@ class Image(BasePath, BaseConfig):
 
         return self.full_path
 
+    # @delete_source_files
     @wrap_on_database_editing
-    @delete_source_files
     def extract_by_mask(self, area_of_interest: Feature) -> str:
         if self.mosaic_dataset: return self.full_path
 
+        if Exists(os.path.join(self.path, f'{self._masked_prefix}{self.name}')):
+            aprint(f'Encontrada imagem com máscara {self.full_path}')
+            return self.full_path
+
+        aprint(f'Extraindo máscara da imagem {self.full_path}')
+        clipped_mosaic = ExtractByMask(
+            in_raster=self.full_path,
+            in_mask_data=area_of_interest.full_path
+        )
         self.name = f'{self._masked_prefix}{self.name}'
-        self.path = self.database.full_path
-        if not Exists(os.path.join(self.path, self.name)):
-            aprint(f'Extraindo máscara da imagem {self.full_path}')
-            clipped_mosaic = ExtractByMask(
-                in_raster=self.full_path,
-                in_mask_data=area_of_interest.full_path
-            )
-            self.full_path = os.path.join(self.path, self.name)
-            clipped_mosaic.save(self.full_path)
-        else:
-            self.full_path = os.path.join(self.path, self.name)
+        clipped_mosaic.save(self.full_path)
 
         return self.full_path
     
+    # @delete_source_files
     @wrap_on_database_editing
-    @delete_source_files
     def stretch_image(self) -> str:
-        self.name = f'{self._stretch_prefix}{self.name}'
-        self.path = self.database.full_path
-        if not Exists(os.path.join(self.path, self.name)):
-            aprint(f'Aplicando Strech na Imagem {self.full_path}')
-            stretch = Stretch(
-                raster=self.full_path,
-                stretch_type="StdDev",
-                min=0,
-                max=255,
-                num_stddev=None,
-                statistics=None,
-                dra=False,
-                min_percent=0.25,
-                max_percent=0.75,
-                gamma=None,
-                compute_gamma=False,
-                sigmoid_strength_level=None
-            )
-            self.full_path = os.path.join(self.path, self.name)
-            stretch.save(self.full_path)
-        else:
-            self.full_path = os.path.join(self.path, self.name)
+        if Exists(os.path.join(self.path, f'{self._stretch_prefix}{self.name}')):
+            aprint(f'Encontrada Imagem com Stretch - {self.full_path}')
+            return self.full_path
         
+        aprint(f'Aplicando Strech na Imagem {self.full_path}')
+        stretch = Stretch(
+            raster=self.full_path,
+            stretch_type="StdDev",
+            min=0,
+            max=255,
+            num_stddev=None,
+            statistics=None,
+            dra=False,
+            min_percent=0.25,
+            max_percent=0.75,
+            gamma=None,
+            compute_gamma=False,
+            sigmoid_strength_level=None
+        )
+        self.name = f'{self._stretch_prefix}{self.name}'
+        stretch.save(self.full_path)
+
         return self.full_path
 
-    @delete_source_files
     def copy_image(self, pixel_type: str = None, nodata_value: str = '', background_value: float = None, destination: str or Database = None, delete_source: bool = False) -> str:
         """Creates a copy of the current image
             Args:

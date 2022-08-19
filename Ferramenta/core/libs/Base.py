@@ -9,11 +9,12 @@ from zipfile import ZipFile
 from arcpy import Exists
 from arcpy.management import Delete
 from core._constants import *
-from core.libs.ProgressTracking import ProgressTracker
 from core._logs import *
+from core.libs.ProgressTracking import ProgressTracker
 from sentinelsat.exceptions import ServerError as SetinelServerError
 
-from .ErrorManager import FolderAccessError, MaxFailuresError, UnexistingFeatureError
+from .ErrorManager import (FolderAccessError, InvalidPathError,
+                           MaxFailuresError, UnexistingFeatureError)
 
 
 def load_path_and_name(wrapped):
@@ -69,7 +70,6 @@ def prevent_server_error(wrapped_function):
                 time.sleep(failed_attempts*20)
 
     return reattempt_execution
-
 
 class BaseConfig:
     debug = True
@@ -136,7 +136,6 @@ class BaseConfig:
 class BasePath:
     path:str = ''
     name: str = ''
-    full_path: str = ''
 
     @load_path_and_name
     def __init__(self, path: str = None, name: str = None, *args, **kwargs):
@@ -145,9 +144,19 @@ class BasePath:
             self.name = name
             self.load_base_path_variables(path=path)
 
+    @property
+    def full_path(self):
+        if not self.path:
+            raise InvalidPathError(object=self)
+        if not self.name:
+            return self.path
+        if hasattr(self, 'database') and self.database:
+            if self.database.feature_dataset:
+                return os.path.join(self.database.feature_dataset_full_path, self.name)
+        return os.path.join(self.path, self.name)
+
     def load_base_path_variables(self, path: str):
         self.load_path_variable(path)
-        self.full_path = os.path.join(self.path, self.name)
 
     def load_path_variable(self, path: str, subsequent_folders: list = []) -> str:
         """Loads a path variable and guarantees it exists and is accessible
