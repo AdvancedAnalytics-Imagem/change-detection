@@ -1,3 +1,4 @@
+import glob
 import json
 import logging
 import os
@@ -35,6 +36,7 @@ class CBERSImageryService(BaseImageAcquisitionService):
         for file_id in files.keys():
             print(f'Iniciando composição da imagem {file_id}')
             compose_img = f"{download_folder}\\{file_id}_compose.tif"
+            self.__delete_temp_files(compose_img, delete_base=True)
             filepaths = [
                 files[file_id]['nir_img'],
                 files[file_id]['red_img'],
@@ -42,19 +44,31 @@ class CBERSImageryService(BaseImageAcquisitionService):
                 files[file_id]['blue_img']
             ]
             arcpy.management.CompositeBands(';'.join(filepaths), compose_img)
+            self.__delete_temp_files(compose_img)
             print(f'Finalizado composição da imagem {file_id}')
-            print(f'Iniciando pansharpening da imagem {file_id}')
-            pansharp_img = f"{download_folder}\\{file_id}_pansharp.tif"
-            try:
-                arcpy.CreatePansharpenedRasterDataset_management(
-                    compose_img, '3', '2', '1', '4', pansharp_img, files[file_id]['pan_img'], 'Gram-Schmidt'
-                )
-            except Exception as e:
-                print(str(e))
-            print(f'Finalizado pansharpening da imagem {file_id}')
+            self.__pansharp_image(file_id, download_folder, files[file_id]['pan_img'])
 
-    def pansharp_image(self, img_path: str, pansharp_img_path: str):
-        pass
+    def __delete_temp_files(self, filepath: str, delete_base=False):
+        extensions = ['.tfw', '.tif.aux.xml', '.tif.ovr', '.tif.xml']
+        for ext in extensions:
+            tmp_file = filepath[0:-4] + ext
+            if os.path.exists(tmp_file):
+                os.remove(tmp_file)
+        if delete_base:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+
+
+    def __pansharp_image(self, file_id: str, download_folder: str, pan_img: str):
+        print(f'Iniciando pansharpening da imagem {file_id}')
+        compose_img = f"{download_folder}\\{file_id}_compose.tif"
+        pansharp_img = f"{download_folder}\\{file_id}_pansharp.tif"
+        self.__delete_temp_files(pansharp_img, delete_base=True)
+        arcpy.CreatePansharpenedRasterDataset_management(
+            compose_img, '1', '2', '3', '4', pansharp_img, pan_img, 'Gram-Schmidt'
+        )
+        self.__delete_temp_files(pansharp_img)
+        print(f'Finalizado pansharpening da imagem {file_id}')
 
     def __get_images_metadata(self, area: [], initial_date: datetime, final_date: datetime) -> pd.DataFrame:
         logging.debug(f'Coordenadas da área: {area}\n'
