@@ -33,14 +33,28 @@ class CBERSImageryService(BaseImageAcquisitionService):
 
     def compose_image(self, files, download_folder: str):
         for file_id in files.keys():
-            out_img = f"{download_folder}\\{file_id}_compose.tif"
+            print(f'Iniciando composição da imagem {file_id}')
+            compose_img = f"{download_folder}\\{file_id}_compose.tif"
             filepaths = [
                 files[file_id]['nir_img'],
                 files[file_id]['red_img'],
                 files[file_id]['green_img'],
                 files[file_id]['blue_img']
             ]
-            arcpy.management.CompositeBands(';'.join(filepaths), out_img)
+            arcpy.management.CompositeBands(';'.join(filepaths), compose_img)
+            print(f'Finalizado composição da imagem {file_id}')
+            print(f'Iniciando pansharpening da imagem {file_id}')
+            pansharp_img = f"{download_folder}\\{file_id}_pansharp.tif"
+            try:
+                arcpy.CreatePansharpenedRasterDataset_management(
+                    compose_img, '3', '2', '1', '4', pansharp_img, files[file_id]['pan_img'], 'Gram-Schmidt'
+                )
+            except Exception as e:
+                print(str(e))
+            print(f'Finalizado pansharpening da imagem {file_id}')
+
+    def pansharp_image(self, img_path: str, pansharp_img_path: str):
+        pass
 
     def __get_images_metadata(self, area: [], initial_date: datetime, final_date: datetime) -> pd.DataFrame:
         logging.debug(f'Coordenadas da área: {area}\n'

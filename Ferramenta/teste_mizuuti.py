@@ -14,5 +14,14 @@ endDate = datetime.datetime(2022, 8, 2)
 folder = 'D:\\data'
 
 cbers = CBERSImageryService()
-files = cbers.download_images(area, beginDate, endDate, folder)
+# files = cbers.download_images(area, beginDate, endDate, folder)
+files = {
+    'CBERS4A_WPM20513220220802': {
+        'nir_img': 'D:\\data\\n_CBERS4A_WPM20513220220802.tif',
+        'red_img': 'D:\\data\\r_CBERS4A_WPM20513220220802.tif',
+        'green_img': 'D:\\data\\g_CBERS4A_WPM20513220220802.tif',
+        'blue_img': 'D:\\data\\b_CBERS4A_WPM20513220220802.tif',
+        'pan_img': 'D:\\data\\p_CBERS4A_WPM20513220220802.tif',
+    }
+}
 cbers.compose_image(files, folder)
