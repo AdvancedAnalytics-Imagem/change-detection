@@ -5,29 +5,23 @@ from enum import Enum, unique
 
 from arcpy import Exists
 from core._constants import *
-from core.adaptees.SateliteImagery.ImageryServices import Cebers, Sentinel2
 from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image
-from core.libs.Base import BaseConfig
+from core.libs.BaseConfigs import BaseConfigs
+from core.services.SateliteImagery.ImageryServices import Cebers, Sentinel2
 
 
-class ImageAcquisition(BaseConfig):
+class ImageAcquisition(BaseConfigs):
     current_image: Image
     historic_image: Image
-    temp_destination: str or Database = 'IN_MEMORY'
 
     @unique
     class Services(Enum):
         SENTINEL2 = Sentinel2
         CYBERS = Cebers
 
-    def __init__(self, service: str = 'SENTINEL2', credentials: list = [], downloads_folder: str = None, temp_destination: str or Database = None) -> None:
-        if temp_destination:
-            if not isinstance(temp_destination, Database):
-                temp_destination = Database(temp_destination)
-            self.temp_destination = temp_destination
-        
+    def __init__(self, service: str = 'SENTINEL2', credentials: list = [], downloads_folder: str = None) -> None:        
         self.service = self.Services[service].value(downloads_folder=downloads_folder)
         self.service.authenticate_api(credentials=credentials)
 
@@ -35,13 +29,12 @@ class ImageAcquisition(BaseConfig):
         self.service.set_downloaded_images_path(*args, **kwargs)
 
     def get_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True):
-        """Busca as imagens históricas e 
-
-        Args:
-            area_of_interest (Feature): _description_
-            results_output_location (Database, optional): _description_. Defaults to None.
-            max_cloud_coverage (int, optional): _description_. Defaults to None.
-            compose_as_single_image (bool, optional): _description_. Defaults to True.
+        """Busca as imagens históricas e atuais, baixa e cria um mosaico dos diferentes tiles
+            Args:
+                area_of_interest (Feature): _description_
+                results_output_location (Database, optional): _description_. Defaults to None.
+                max_cloud_coverage (int, optional): _description_. Defaults to None.
+                compose_as_single_image (bool, optional): _description_. Defaults to True.
         """
         if max_cloud_coverage:
             self.service.max_cloud_coverage = max_cloud_coverage
@@ -54,7 +47,9 @@ class ImageAcquisition(BaseConfig):
         current_images = {}
         current_image_name = f'Current_Image_{self.today_str}'
 
-        if not Exists(os.path.join(results_output_location.full_path, f'Stch_Msk_Mos_{current_image_name}')):
+        if not Exists(
+            os.path.join(results_output_location.full_path, f'Stch_Msk_Mos_{current_image_name}')
+            ):
             self.service.query_available_images(area_of_interest=area_of_interest)
 
             for tile in intersecting_tiles:
@@ -71,8 +66,7 @@ class ImageAcquisition(BaseConfig):
                 name=current_image_name,
                 images_for_composition=composition_images,
                 compose_as_single_image=compose_as_single_image,
-                mask=area_of_interest,
-                temp_destination=self.temp_destination
+                mask=area_of_interest
             )
 
             tiles_dates = list(current_images.keys())
@@ -84,7 +78,7 @@ class ImageAcquisition(BaseConfig):
             self.current_image = Image(
                 path=results_output_location.full_path,
                 name=f'Stch_Msk_Mos_{current_image_name}',
-                temp_destination=self.temp_destination
+                stretch_image=False
             )
             tiles_max_date = self.today
 
@@ -113,8 +107,7 @@ class ImageAcquisition(BaseConfig):
                 name=historic_image_name,
                 images_for_composition=hist_composition_images,
                 compose_as_single_image=compose_as_single_image,
-                mask=area_of_interest,
-                temp_destination=self.temp_destination
+                mask=area_of_interest
             )
             hist_tiles_dates = list(historic_images.keys())
             hist_tiles_dates.sort()
@@ -123,7 +116,7 @@ class ImageAcquisition(BaseConfig):
             self.historic_image = Image(
                 path=results_output_location.full_path,
                 name=f'Stch_Msk_Mos_{historic_image_name}',
-                temp_destination=self.temp_destination
+                stretch_image=False
             )
             hist_tiles_max_date = min_search_date
 

@@ -11,15 +11,16 @@ from core._logs import *
 from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image, SentinelImage
-from core.libs.Base import (BaseConfig, BasePath, ProgressTracker,
-                            prevent_server_error)
-from core.ml_models.ImageClassifier import Sentinel2ImageClassifier, BaseImageClassifier
+from core.libs.Base import ProgressTracker, prevent_server_error
+from core.libs.BaseConfigs import BaseConfigs
+from core.ml_models.ImageClassifier import (BaseImageClassifier,
+                                            Sentinel2ImageClassifier)
 from nbformat import ValidationError
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
 
 
-class BaseImageAcquisitionService(BasePath, BaseConfig):
+class BaseImageAcquisitionService(BaseConfigs):
     gdb_name = 'ServicesSupportData.gdb'
     images_folder: str = None
 
@@ -33,8 +34,6 @@ class BaseImageAcquisitionService(BasePath, BaseConfig):
     def set_downloaded_images_path(self, path: str) -> None:
         if path and not path.endswith('Downloaded_Images'): path = os.path.join(path, 'Downloaded_Images')
         self.images_folder = self.load_path_variable(path=path)
-        aprint(f'Image Downloads Folder: {self.images_folder}', level=LogLevels.INFO)
-
     
     def authenticate_api(self, *args, **kwargs) -> None:
         pass
@@ -80,7 +79,9 @@ class Sentinel2(BaseImageAcquisitionService):
     def _select_tiles(self, area_of_interest: Feature, where_clause: str = None) -> Feature:
         if where_clause:
             area_of_interest.select_by_attributes(where_clause=where_clause)
+        aprint(f'Select Layer: {self.tiles_layer}')
         self.selected_tyles = Feature(path=self.tiles_layer.select_by_location(intersecting_feature=area_of_interest))
+        aprint(f'Selected Tiles: {self.selected_tyles}')
         return self.selected_tyles
     
     def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None) -> list:
@@ -198,7 +199,6 @@ class Sentinel2(BaseImageAcquisitionService):
         if not isinstance(best_available_image, list): best_available_image = [best_available_image]
         [image.download_image(
             image_database=self.images_database,
-            downloads_folder=self.images_folder,
             output_name=f'ComposedTile_{tile_name}'
         ) for image in best_available_image]
 

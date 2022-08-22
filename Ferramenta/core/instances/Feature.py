@@ -4,7 +4,7 @@ import datetime
 import json
 import os
 import time
-from datetime import datetime
+from datetime import datetime, date
 
 from arcpy import (CopyFeatures_management, Describe, Exists,
                    FeatureClassToFeatureClass_conversion,
@@ -13,20 +13,22 @@ from arcpy import (CopyFeatures_management, Describe, Exists,
                    SelectLayerByAttribute_management,
                    SelectLayerByLocation_management, SpatialReference,
                    TruncateTable_management)
+from arcpy import env as arcpy_env
 from arcpy.analysis import Intersect
 from arcpy.cartography import SimplifyLine, SimplifyPolygon
 from arcpy.conversion import RasterToPolygon
 from arcpy.da import SearchCursor
 from arcpy.management import AddField, CalculateField, Delete
 from core._logs import *
-from core.libs.Base import BasePath, load_path_and_name
+from core.libs.Base import load_path_and_name
+from core.libs.BaseConfigs import BaseDatabasePath
 from core.libs.Enums import FieldType
 from core.libs.ErrorManager import (DatabaseInsertionError, MaxFailuresError,
                                     UnexistingFeatureError)
 from core.ml_models.ImageClassifier import BaseImageClassifier
 from nbformat import ValidationError
 
-from .Database import BaseDatabasePath, Database, wrap_on_database_editing
+from .Database import Database, wrap_on_database_editing
 from .Editor import CursorManager
 
 _REQUIRED_OVERLAP_TYPE_FOR_DISTANCE = [
@@ -62,6 +64,8 @@ class FieldManager:
     def get_field_type_by_value(self, field_value: any):
         if isinstance(field_value, datetime) or field_value == datetime:
             return FieldType._date.value
+        if isinstance(field_value, date) or field_value == date:
+            return FieldType._date.value
         if isinstance(field_value, str) or field_value == str:
             return FieldType._str.value
         if isinstance(field_value, int) or field_value == int:
@@ -93,12 +97,7 @@ class Feature(BaseDatabasePath, CursorManager):
     raster_field: str = 'Value'
 
     @load_path_and_name
-    def __init__(self, path: str, name: str = None, raster: str = None, temp_destination: str or Database = None, *args, **kwargs):
-        if temp_destination:
-            if not isinstance(temp_destination, Database):
-                temp_destination = Database(temp_destination)
-            self.temp_destination = temp_destination
-
+    def __init__(self, path: str, name: str = None, raster: str = None, *args, **kwargs):
         if raster is not None:
             self.create_polygon_from_raster(raster=raster, path=path, name=name)
 
@@ -112,11 +111,8 @@ class Feature(BaseDatabasePath, CursorManager):
             self.spatialReference = description.spatialReference if hasattr(description, 'spatialReference') else {'name':'Unknown'}
     
     def __repr__(self):
-        return f'{self.name} - {self.geometry_type} > {self.full_path}'
+        return self.full_path
 
-    def __str__(self):
-        return f'{self.name} - {self.geometry_type} > {self.full_path}'
-    
     def row_count(self) -> int:
         return int(GetCount_management(in_rows=self.full_path)[0])
 
@@ -150,17 +146,21 @@ class Feature(BaseDatabasePath, CursorManager):
         return temp_feature[0]
 
     @wrap_on_database_editing
-    def geojson_geometry(self, out_sr=4326):
+    def geojson_geometry(self, out_sr=4326, temp_folder: str = None):
         if self.is_table:
             return {}
-
         geojson = {
             "type": "FeatureCollection",
             "features": []
         }
 
         feature = self.simpplify_geometry()
-        temp_feature = Project_management(feature, 'temp_project_'+self.name.replace('.shp',''), SpatialReference(out_sr))
+        if self.temp_db.full_path == 'IN_MEMORY':
+            temp_folder = self.load_path_variable(ROOT_DIR, f'temp_{self.today_str}')
+            temp_feature = Project_management(feature, os.path.join(temp_folder, f"temp_project_{self.name}"), SpatialReference(out_sr))
+        else:
+            temp_feature = Project_management(feature, f"temp_project_{self.name.replace('.shp','')}", SpatialReference(out_sr))
+
         serialized_shapes = [item[0] for item in SearchCursor(temp_feature, ['SHAPE@'])]
         
         for shape in serialized_shapes:
@@ -175,6 +175,9 @@ class Feature(BaseDatabasePath, CursorManager):
                 "properties": {}
             }
             geojson['features'].append(feature)
+        
+        if temp_folder:
+            Delete(temp_folder)
 
         return geojson
 
@@ -211,8 +214,8 @@ class Feature(BaseDatabasePath, CursorManager):
             search_distance=distance
         )
         
-        feature_name = self.get_unique_name(path=self.temp_destination, name=os.path.basename(self.name))
-        return CopyFeatures_management(selected_features, os.path.join(self.temp_destination, feature_name))[0]
+        feature_name = self.get_unique_name(path=self.temp_db, name=os.path.basename(self.name))
+        return CopyFeatures_management(selected_features, os.path.join(self.temp_db.full_path, feature_name))[0]
 
     def format_feature_field_structure(self, data: list, fields: list = [], format: str = tuple):
         """Formats data according to feature object
@@ -237,13 +240,10 @@ class Feature(BaseDatabasePath, CursorManager):
             Returns:
                 list: Field names
         """
-        try:
-            field_names = [field.name for field in ListFields(self.full_path) if
-                field.name != self.OIDField and
-                self.shape_field not in field.name
-            ]
-        except Exception as e:
-            print(e)
+        field_names = [field.name for field in ListFields(self.full_path) if
+            field.name != self.OIDField and
+            self.shape_field not in field.name
+        ]
 
         if self.shape_field and get_shape:
             field_names.append('SHAPE@')
@@ -304,8 +304,8 @@ class Feature(BaseDatabasePath, CursorManager):
             top_ids = self.serialize_feature_selection(fields=[self.OIDField], top_rows=top_rows, oid_in=oid_in)
             where_clause = f'{self.OIDField} in {tuple(top_ids)}'
         try:
-            feature_name = self.get_unique_name(path=self.temp_destination, name=os.path.basename(self.name))
-            selection_copy = FeatureClassToFeatureClass_conversion(in_features=self.full_path, out_path=self.temp_destination, out_name=feature_name, where_clause=where_clause)
+            feature_name = self.get_unique_name(path=self.temp_db, name=os.path.basename(self.name))
+            selection_copy = FeatureClassToFeatureClass_conversion(in_features=self.full_path, out_path=self.temp_db, out_name=feature_name, where_clause=where_clause)
             return selection_copy[0]
 
         except Exception as e:
@@ -429,6 +429,15 @@ class Feature(BaseDatabasePath, CursorManager):
             )
         self.raster_field = raster_field
     
+    @wrap_on_database_editing
+    def update_rows(self, where_clause: str, fields: list, values: list) -> None:
+        self.look_for_missing_fields(fields={fields[i]:values[i] for i in range(len(fields))})
+        with self.update_cursor(
+            fields=fields,
+            where_clause=where_clause) as cursor:
+            for row in cursor:
+                cursor.updateRow(values)
+
     def calculate_field(self, field_name: str, expression: str = None, code_block: str = None, field_value: any = str, expression_type: str = "PYTHON3", image_classifier: BaseImageClassifier = None):
         if image_classifier is not None:
             self.look_for_missing_fields(fields={image_classifier.class_field:str})
@@ -456,8 +465,7 @@ class Feature(BaseDatabasePath, CursorManager):
             [intersecting_feature, 0],
             [self.full_path, 1]
         ]
-        path = self.temp_destination.full_path if hasattr(self.temp_destination, 'full_path') else self.temp_destination
-        output = os.path.join(path, f'intersection_{self.today_str}')
+        output = os.path.join(self.temp_db.full_path, f'intersection_{self.today_str}')
         if Exists(output):
             return output
 
