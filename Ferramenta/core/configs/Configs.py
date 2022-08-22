@@ -12,36 +12,41 @@ from core.instances.Feature import Feature
 from core.instances.MosaicDataset import MosaicDataset
 from core.libs.Base import BasePath
 
-
 class Configs(BasePath):
     arcgis_execution: bool = False
+    env_configs: dict = {}
+    temp_dir: str = None
+    download_storage: str = None
+    temp_db: str = None
+    delete_temp_files_while_processing: bool = False
+    delete_temp_files: bool = False
+    image_storage: str = IMAGES_DIR
 
     def __init__(self) -> None:
         self.load_all_variables()
-
-        if not self.temp_dir:
-            self.temp_dir = TEMP_DIR
-
-        if not self.temp_db:
-            self.temp_db = Database(path=TEMP_DB)
-        else:
-            self.temp_db = Database(path=self.temp_db)
-
-        if not self.download_storage:
-            self.download_storage = DOWNLOADS_DIR
+        if self.delete_temp_files_while_processing:
+            os.environ['DELETE_TEMP_FILES_WHILE_PROCESSING'] = 'True'
+        if self.delete_temp_files:
+            os.environ['DELETE_TEMP_FILES'] = 'True'
+        if self.temp_dir:
+            os.environ['TEMP_DIR'] = self.temp_dir
+        if self.download_storage:
+            os.environ['DOWNLOADS_DIR'] = self.download_storage
+        if self.image_storage:
+            os.environ['IMAGE_STORAGE'] = self.image_storage
+        if self.temp_db:
+            os.environ['TEMP_DB'] = self.temp_db
 
         if self.insert_on_database:
-            self.classificacao_atual = Feature(path=self.classificacao_atual, temp_destination=self.temp_db)
-            self.classificacao_historica = Feature(path=self.classificacao_historica, temp_destination=self.temp_db)
-            self.deteccao_de_mudancas = Feature(path=self.deteccao_de_mudancas, temp_destination=self.temp_db)
-            
-        self.target_area = Feature(path=self.target_area, temp_destination=self.temp_db)
+            self.classificacao_atual = Feature(path=self.classificacao_atual)
+            self.classificacao_historica = Feature(path=self.classificacao_historica)
+            self.deteccao_de_mudancas = Feature(path=self.deteccao_de_mudancas)
 
+        self.target_area = Feature(path=self.target_area)
         self.output_images_location = Database(path=self.output_images_location)
-
-        self.output_mosaic_dataset_current = MosaicDataset(path=self.output_mosaic_dataset_current, create=True)
-        self.output_mosaic_dataset_historic = MosaicDataset(path=self.output_mosaic_dataset_historic, create=True)
-
+        self.output_mosaic_dataset_current = MosaicDataset(path=self.output_mosaic_dataset_current)
+        self.output_mosaic_dataset_historic = MosaicDataset(path=self.output_mosaic_dataset_historic)
+        
 
     def get(self, key):
         return self.__dict__.get(key)
@@ -115,6 +120,7 @@ class Configs(BasePath):
             temp_dir = GetParameterAsText(8)
             if temp_dir and self.temp_dir != temp_dir:
                 self.temp_dir = temp_dir
+                self.temp_db = os.path.join(temp_dir, f'{os.path.basename(temp_dir)}.gdb')
 
             download_storage = GetParameterAsText(9)
             if download_storage and self.download_storage != download_storage:
