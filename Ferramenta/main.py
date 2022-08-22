@@ -12,7 +12,6 @@ from core.instances.Images import Image
 from core.instances.Database import Database
 from core.instances.MosaicDataset import MosaicDataset
 
-aprint(message='Iniciando Execução - v1.16', level=LogLevels.INFO)
 VARIABLES = Configs()
 BASE_CONFIGS = BaseConfigs()
 
@@ -135,10 +134,10 @@ def main():
 
 if __name__ == '__main__':
     aprint(
-        message=f'''Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
-            \n> DB temporário: {BASE_CONFIGS.temp_db.full_path}
-            \nArquivos baixados serão salvos em: {BASE_CONFIGS.download_storage}
-            \nImagens finais serão salvas em: {BASE_CONFIGS.image_storage}''',
+        message=f'''1. Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
+            \n2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}
+            \n3. Arquivos baixados serão salvos em: {BASE_CONFIGS.download_storage}
+            \n4. Imagens finais serão salvas em: {BASE_CONFIGS.image_storage}''',
         level=LogLevels.WARNING
     )
     main()
