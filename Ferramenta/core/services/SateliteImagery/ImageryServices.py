@@ -202,10 +202,11 @@ class Sentinel2(BaseImageAcquisitionService):
             output_name=f'ComposedTile_{tile_name}'
         ) for image in best_available_image]
 
+        # List of best images Instances (already downloaded)
         return best_available_image
 
 
-class Cebers(BaseImageAcquisitionService):
+class Cbers(BaseImageAcquisitionService):
     _tiles_layer_name = 'grade_cebers_brasil'
     
     def __init__(self) -> None:

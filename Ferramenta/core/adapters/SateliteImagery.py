@@ -9,7 +9,7 @@ from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.libs.BaseConfigs import BaseConfigs
-from core.services.SateliteImagery.ImageryServices import Cebers, Sentinel2
+from core.services.SateliteImagery.ImageryServices import Cbers, Sentinel2
 
 
 class ImageAcquisition(BaseConfigs):
@@ -19,7 +19,7 @@ class ImageAcquisition(BaseConfigs):
     @unique
     class Services(Enum):
         SENTINEL2 = Sentinel2
-        CYBERS = Cebers
+        CBERS = Cbers
 
     def __init__(self, service: str = 'SENTINEL2', credentials: list = [], downloads_folder: str = None) -> None:        
         self.service = self.Services[service].value(downloads_folder=downloads_folder)
