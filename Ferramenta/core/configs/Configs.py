@@ -77,11 +77,9 @@ class Configs(BasePath):
 
     def load_arcgis_variables(self):
         if len(GetParameterInfo())>0:
-            aprint(message='Execução no ArcGIS', level=LogLevels.WARNING)
             self.debug = False
             self.arcgis_execution = True
         else:
-            aprint(message='Execução fora do ArcGIS', level=LogLevels.WARNING)
             self.debug = True
 
         if self.arcgis_execution:
