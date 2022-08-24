@@ -16,6 +16,7 @@ from core.instances.MosaicDataset import MosaicDataset
 from core.libs.Base import (delete_source_files, load_path_and_name,
                             prevent_server_error)
 from core.libs.BaseConfigs import BaseConfigs, BaseDatabasePath
+from core.ml_models.ImageClassifier import BaseImageClassifier
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
 from sentinelsat.exceptions import ServerError as SetinelServerError
@@ -280,7 +281,7 @@ class Image(BaseDatabasePath):
         copy = self.copy_image(pixel_type='1_BIT', destination=output_path)
         return Feature(path=f'{copy}_polygon', raster=copy)
 
-    def classify(self, classifier: str, output_path: Database, arguments: str = None, processor_type: str = 'CPU', n_cores: int = 1) -> Feature:
+    def classify(self, classifier: BaseImageClassifier, output_path: Database, arguments: str = None, processor_type: str = 'CPU', n_cores: int = 1) -> Feature:
         aprint(f'Classificando a imagem {self.full_path}')
         classified_raster_full_path = os.path.join(self.temp_db.full_path, f'{self._classification_prefix}{self.name}')
 

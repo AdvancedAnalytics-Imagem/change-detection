@@ -6,11 +6,12 @@ from datetime import datetime
 from core._logs import *
 from core.adapters.SateliteImagery import ImageAcquisition
 from core.configs.Configs import Configs
-from core.instances.Feature import Feature
-from core.libs.BaseConfigs import BaseConfigs
-from core.instances.Images import Image
 from core.instances.Database import Database
+from core.instances.Feature import Feature
+from core.instances.Images import Image
 from core.instances.MosaicDataset import MosaicDataset
+from core.libs.BaseConfigs import BaseConfigs
+from core.ml_models.ImageClassifier import BaseImageClassifier
 
 VARIABLES = Configs()
 BASE_CONFIGS = BaseConfigs()
@@ -30,7 +31,7 @@ def get_images():
     )
     return images
 
-def classify_image(image = None, ml_model = None):
+def classify_image(image: Image = None, ml_model: BaseImageClassifier = None):
     aprint(message='Classificando Imagens', progress=True)
     if not image or not ml_model: return
     classification = image.classify(
