@@ -22,7 +22,7 @@ class ClassAttribute:
 class BaseImageClassifier(BasePath):
     ml_model_extension = '.dlpk'
     ml_model_name = ''
-    class_field = 'CLASS'
+    class_field = 'CLASSE'
 
     class Classes(ExtendedEnum):
         pass
@@ -38,7 +38,7 @@ class BaseImageClassifier(BasePath):
 
 class Sentinel2ImageClassifier(BaseImageClassifier):
     ml_model_name = 'sentinel_n2'
-    class_field = 'CLASS'
+    class_field = 'CLASSE'
 
     class Classes(ExtendedEnum):
         AREA_ANTROPICA = ClassAttribute(60, "Área Antrópicas Não Agrícolas")

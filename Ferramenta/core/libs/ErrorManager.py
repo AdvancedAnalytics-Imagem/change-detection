@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 #!/usr/bin/python
 import sys
-import traceback
 
 from core._logs import *
 
@@ -14,8 +13,6 @@ class Error(Exception):
         aprint(message, level=LogLevels.CRITICAL)
         if self.interrupt_execution:
             aprint('Interrompendo execução', level=LogLevels.WARNING)
-
-            aprint(traceback.format_exc(), level=LogLevels.DEBUG)
             sys.exit()
 
 class FolderAccessError(Error):

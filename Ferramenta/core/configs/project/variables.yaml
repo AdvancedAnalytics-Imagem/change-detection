@@ -15,6 +15,7 @@ temp_db: "D:\\arcgis-data\\MyProject\\temp.gdb"
 temp_dir: "D:\\arcgis-data\\MyProject\\temp"
 download_storage: "D:\\arcgis-data\\MyProject\\downloads"
 delete_temp_files: True
+
 # Parametros de Classificação
 max_cloud_coverage: 20
 sensor: "SENTINEL2"
@@ -22,6 +23,7 @@ compose_as_single_image: True # Caso seja False, ao invés de mosaicar os tiles 
 classification_arguments: "padding 70;batch_size 2;predict_background True;tile_size 256"
 classification_processor: "CPU"
 n_cores: 1
+
 # Parâmetros de Execução
 debug: True
 download_images: True

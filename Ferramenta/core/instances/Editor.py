@@ -4,13 +4,12 @@
 from arcpy import Extent, ListTransformations, SpatialReference
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from core._constants import *
-from core.libs.Base import BaseConfig
 from core.libs.ErrorManager import NotInADatabase, SavingEditingSessionError
 
 from .Database import Database
 
 # TODO Create transformation manager for insert cursor
-# class TransformationManager(BaseConfig):
+# class TransformationManager:
 
 #     from_sr = arcpy.SpatialReference('WGS 1984')
 #     to_sr = arcpy.SpatialReference('NAD 1927 StatePlane California VI FIPS 0406')
@@ -30,7 +29,7 @@ class CurrentCursor:
     def open_cursor(self):
         return self.method(**self.kwargs)
 
-class CursorManager(BaseConfig):
+class CursorManager:
     current_cursor = None
     database: Database = None
 

@@ -2,17 +2,18 @@
 #!/usr/bin/python
 import os
 
-from arcpy import (CreateMosaicDataset_management, Describe, Exists,
+from arcpy import (CreateMosaicDataset_management, Describe, Exists, ListDatasets,
                    SpatialReference)
 from arcpy.management import AddRastersToMosaicDataset
 from core._logs import *
-from core.libs.Base import BaseConfig, load_path_and_name, prevent_server_error
+from core.libs.Base import load_path_and_name, prevent_server_error
+from core.libs.BaseConfigs import BaseDatabasePath
 from core.libs.ErrorManager import MosaicDatasetError
+from core.instances.Feature import Feature
+from .Database import Database, wrap_on_database_editing
 
-from .Database import BaseDatabasePath, Database, wrap_on_database_editing
 
-
-class MosaicDataset(BaseDatabasePath, BaseConfig):
+class MosaicDataset(BaseDatabasePath):
     prefix: str = 'MosDtst_'
     _coordinate_system: SpatialReference = SpatialReference(4326) # GCS_WGS_1984
 
@@ -30,6 +31,16 @@ class MosaicDataset(BaseDatabasePath, BaseConfig):
         
         if images_for_composition:
             self.add_images(images=images_for_composition)
+        
+        footprints_name = list(
+            filter(
+                lambda n : n.endswith('_CAT'),
+                Describe(self.full_path).childrenNames
+            )
+        )
+        if footprints_name:
+            self.footprints_name = footprints_name[0]
+            self.footprints_layer = Feature(path=self.path, name=self.footprints_name)
     
     @property
     def coordinate_system(self) -> SpatialReference:
