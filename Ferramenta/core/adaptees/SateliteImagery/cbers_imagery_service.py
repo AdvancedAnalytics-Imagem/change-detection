@@ -26,13 +26,25 @@ class CBERSImageryService(BaseImageAcquisitionService):
     __CBER_SENSOR = 'WPM'
     __CBER_OUTPUT = ''
     __tiles_layer_name: str = 'grade_cbers_brasil'
+    __PRJ = 'PROJCS["WGS_1984_Web_Mercator_Auxiliary_Sphere",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Mercator_Auxiliary_Sphere"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",0.0],PARAMETER["Standard_Parallel_1",0.0],PARAMETER["Auxiliary_Sphere_Type",0.0],UNIT["Meter",1.0]]'
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.tiles_layer = Feature(path=self.base_gbd.full_path, name=self.__tiles_layer_name)
         self.images_database = Database(path=os.path.dirname(self.images_folder), name='CBERS_IMAGES')
 
-    def compose_image(self, files, download_folder: str):
+    def create_mosaic(self, download_folder: str):
+        print(f'Iniciando mosaico das imagens')
+        base_images = []
+        for file in os.listdir(download_folder):
+            if '_pansharp.tif' in file:
+                base_images.append(f"{download_folder}\\{file}")
+        arcpy.management.MosaicToNewRaster(';'.join(base_images), download_folder, "MOS_A.tif",
+                                           CBERSImageryService.__PRJ, "16_BIT_UNSIGNED", 2, 4, "MEAN", "MATCH")
+        self.__delete_temp_files(download_folder)
+        print(f'Finalizado mosaico das imagens')
+
+    def compose_image(self, files: {}, download_folder: str):
         for file_id in files.keys():
             print(f'Iniciando composição da imagem {file_id}')
             compose_img = f"{download_folder}\\{file_id}_compose.tif"
