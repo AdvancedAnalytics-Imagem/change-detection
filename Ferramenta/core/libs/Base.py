@@ -1,10 +1,7 @@
 # -*- encoding: utf-8 -*-
 #!/usr/bin/python
-import datetime
 import os
 import time
-from datetime import date, datetime, timedelta
-from zipfile import ZipFile
 
 from arcpy import Exists
 from arcpy.management import Delete
@@ -21,20 +18,19 @@ def load_path_and_name(wrapped):
 
     def wrapper(*args, **kwargs):
         if wrapped.__annotations__.get('path') and wrapped.__annotations__.get('name'):
-            if not kwargs.get('name'):
-                path = kwargs.get('path')
-                if path and path != 'IN_MEMORY':
-                    kwargs['name'] = os.path.basename(path)
-                    kwargs['path'] = os.path.dirname(path)
-            elif not kwargs.get('path'):
-                name = kwargs.get('name')
-                if name:
-                    if name == 'IN_MEMORY':
-                        kwargs['name'] = ''
-                        kwargs['path'] = name
-                    else:
-                        kwargs['name'] = os.path.basename(name)
-                        kwargs['path'] = os.path.dirname(name)
+            path = kwargs.get('path')
+            if not isinstance(path, str) and hasattr(path, 'full_path'):
+                kwargs['path'] = path.full_path
+            
+            name = kwargs.get('name')
+
+            if not name and path and path != 'IN_MEMORY':
+                kwargs['name'] = os.path.basename(path)
+                kwargs['path'] = os.path.dirname(path)
+            elif not path and name and name != 'IN_MEMORY':
+                kwargs['name'] = os.path.basename(name)
+                kwargs['path'] = os.path.dirname(name)
+            
         return wrapped(*args, **kwargs)
     
     return wrapper
@@ -47,7 +43,7 @@ def delete_source_files(wrapped):
             source = self.full_path
         response = wrapped(self, *args, **kwargs)
 
-        if source and Exists(source) and (not hasattr(self, 'delete_source') or self.delete_source):
+        if source and Exists(source) and self.delete_temp_files_while_processing:
             if source != response:
                 Delete(source)
         return response
@@ -71,78 +67,17 @@ def prevent_server_error(wrapped_function):
 
     return reattempt_execution
 
-class BaseConfig:
-    debug = True
-    batch_size = 100000
-    regular_sleep_time_seconds = 5
-    progress_tracker: ProgressTracker = ProgressTracker()
-    
-    def format_date_as_str(self, current_date: datetime, return_format: str = "%Y-%m-%dT%H:%M:%S"):
-        """Formats a datetime object on the format 1995/10/13T00:00:00"""
-        if isinstance(current_date, datetime):
-            return datetime.strftime(current_date, return_format)
-        if isinstance(current_date, date):
-            return datetime.strftime(current_date, return_format)
-
-    @property
-    def now(self):
-        return datetime.now()
-    
-    @property
-    def now_str(self):
-        return self.format_date_as_str(self.now)
-
-    @property
-    def today(self):
-        return date.today()
-    
-    @property
-    def today_str(self):
-        return self.format_date_as_str(self.today, return_format='%Y%m%d')
-
-    @load_path_and_name
-    def unzip_file(self, path: str, name: str) -> str:
-        full_path = os.path.join(path, name)
-
-        if not name.endswith(".zip") or not os.path.exists(full_path):
-            return
-        
-        try:
-            zipObj = ZipFile(full_path, "r")
-            zipObj.extractall(path)
-            zipObj.close()
-            os.remove(full_path)
-        except Exception:
-            aprint(f"O arquivo {name} está corrompido", level=LogLevels.WARNING)
-            os.remove(full_path)
-        return full_path.replace('.zip','')
-
-    def unzip_files(self, files: list = [], folder: str = []) -> list:
-        extracted_list = []
-
-        if not files and folder:
-            if os.listdir(folder):
-                # Extrai o arquivo zip e depois deleta o arquivo zip
-                for item in os.listdir(folder):
-                    extracted_list.append(self.unzip_file(path=folder, name=item))
-            else:
-                aprint(f"Pasta {folder} vazia", level=LogLevels.WARNING)
-        elif files:
-            for item in files:
-                extracted_list.append(self.unzip_file(path=folder, name=item))
-
-        return [item for item in extracted_list if item]
-
 class BasePath:
     path:str = ''
     name: str = ''
 
     @load_path_and_name
     def __init__(self, path: str = None, name: str = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if path and name:
             name = name.replace(' ','_').replace(':','')
             self.name = name
-            self.load_base_path_variables(path=path)
+            self.load_path_variable(path=path)
 
     @property
     def full_path(self):
@@ -154,9 +89,6 @@ class BasePath:
             if self.database.feature_dataset:
                 return os.path.join(self.database.feature_dataset_full_path, self.name)
         return os.path.join(self.path, self.name)
-
-    def load_base_path_variables(self, path: str):
-        self.load_path_variable(path)
 
     def load_path_variable(self, path: str, subsequent_folders: list = []) -> str:
         """Loads a path variable and guarantees it exists and is accessible

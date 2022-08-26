@@ -9,15 +9,14 @@ from arcpy import env as arcpy_env
 from arcpy.da import Editor
 from core._constants import *
 from core._logs import *
-from core.libs.Base import (BaseConfig, BasePath, ProgressTracker,
-                            load_path_and_name)
+from core.libs.Base import BasePath, ProgressTracker, load_path_and_name
 from core.libs.ErrorManager import (SavingEditingSessionError,
                                     UnexistingFeatureDatasetError,
                                     UnexistingGDBConnectionError,
                                     UnexistingSDEConnectionError)
 
 
-class SessionManager(BasePath, BaseConfig):
+class SessionManager(BasePath):
     """Editing session of a database, supose to be activated every time a feature/table will be edited inside a database"""
     session: Editor = None
     is_editing: bool = False
@@ -29,7 +28,7 @@ class SessionManager(BasePath, BaseConfig):
 
     @property
     def is_gdb(self) -> bool:
-        return self.full_path.endswith('.gdb')
+        return '.gdb' in self.full_path
 
     @property
     def workspace(self):
@@ -47,7 +46,8 @@ class SessionManager(BasePath, BaseConfig):
         CheckOutExtension("Spatial")
 
     def set_workspace_env(self):
-        self._previous_workspace = arcpy_env.workspace
+        if arcpy_env.workspace:
+            self._previous_workspace = str(arcpy_env.workspace)
         arcpy_env.workspace = self.full_path
         self.set_env_configs()
 
@@ -65,11 +65,11 @@ class SessionManager(BasePath, BaseConfig):
         
         return self._current_session
 
-    def start_editing(self) -> None:
+    def start_editing(self, previous_workspace: str = None) -> None:
         self.set_workspace_env()
 
         if self.is_editing:
-            self.close_editing
+            self.close_editing()
             
         self.is_editing = True
 
@@ -77,8 +77,8 @@ class SessionManager(BasePath, BaseConfig):
             return
 
         self.session.startEditing(
-            with_undo = True,
-            multiuser_mode = True
+            with_undo = False, # True in case database is versioned 
+            multiuser_mode = False # True in case database is versioned
         )
         self.session.startOperation()
 
@@ -88,7 +88,7 @@ class SessionManager(BasePath, BaseConfig):
                 self.session.stopOperation()
                 self.session.stopEditing(save_changes = True)
             except Exception as e:
-                raise SavingEditingSessionError(session=self.session)
+                raise SavingEditingSessionError(session=self)
         self.is_editing = False
         self.revert_workspace_env()
     
@@ -131,7 +131,7 @@ class Database(SessionManager):
             self.name = os.path.basename(path)
             path = os.path.dirname(path)
             
-        self.load_base_path_variables(path)
+        self.load_path_variable(path)
 
         if not Exists(self.full_path):
             if self.name.endswith('.sde'):
@@ -172,48 +172,16 @@ def wrap_on_database_editing(wrapped_function):
     def editor_wrapper(self, *args, **kwargs):
         if self.is_inside_database:
             self.database.start_editing()
-        elif hasattr(self.temp_destination, 'start_editing'):
-            self.temp_destination.start_editing()
+        else:
+            self.temp_db.start_editing()
 
         result = wrapped_function(self, *args, **kwargs)
         
         if self.is_inside_database:
             self.database.close_editing()
-        elif hasattr(self.temp_destination, 'close_editing'):
-            self.temp_destination.close_editing()
+        else:
+            self.temp_db.close_editing()
 
         return result
     
     return editor_wrapper
-
-class BaseDatabasePath(BasePath):
-    database: Database = None
-    temp_destination = 'IN_MEMORY'
-
-    def __init__(self, path: str, name: str, create: bool = False, *args, **kwargs):
-        super().__init__(path=path, name=name, *args, **kwargs)
-        self.load_database_path_variable(path=path, name=name, create=create)
-
-    @property
-    def is_inside_database(self):
-        return self.database is not None
-        
-    @load_path_and_name
-    def load_database_path_variable(self, path: str, name: str = None, create: bool = False):
-        """Loads a feature variable and guarantees it exists and, if in a GDB, if that GDB exists
-            Args:
-                path (str, optional): Path to the feature. Defaults to None.
-                name (str): feature name
-        """
-        if self.path != 'IN_MEMORY':
-            if create:
-                if path.endswith('.sde') or path.endswith('.gdb'):
-                    self.database = Database(path=path, create=create)
-                else:
-                    self.database = Database(path=path, name=name, create=create)
-
-            if '.sde' in path or '.gdb' in path:
-                self.database = Database(path=path)
-
-            if self.database:
-                self.path = self.database.full_path
