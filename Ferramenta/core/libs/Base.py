@@ -2,6 +2,8 @@
 #!/usr/bin/python
 import os
 import time
+from datetime import date, datetime
+from zipfile import ZipFile
 
 from arcpy import Exists
 from arcpy.management import Delete
@@ -15,7 +17,6 @@ from .ErrorManager import (FolderAccessError, InvalidPathError,
 
 
 def load_path_and_name(wrapped):
-
     def wrapper(*args, **kwargs):
         if wrapped.__annotations__.get('path') and wrapped.__annotations__.get('name'):
             path = kwargs.get('path')
@@ -23,20 +24,16 @@ def load_path_and_name(wrapped):
                 kwargs['path'] = path.full_path
             
             name = kwargs.get('name')
-
             if not name and path and path != 'IN_MEMORY':
                 kwargs['name'] = os.path.basename(path)
                 kwargs['path'] = os.path.dirname(path)
             elif not path and name and name != 'IN_MEMORY':
                 kwargs['name'] = os.path.basename(name)
                 kwargs['path'] = os.path.dirname(name)
-            
         return wrapped(*args, **kwargs)
-    
     return wrapper
 
 def delete_source_files(wrapped):
-
     def wrapper(self, *args, **kwargs):
         source = None
         if self.full_path and Exists(self.full_path):
@@ -47,7 +44,6 @@ def delete_source_files(wrapped):
             if source != response:
                 Delete(source)
         return response
-
     return wrapper
 
 def prevent_server_error(wrapped_function):
@@ -59,25 +55,28 @@ def prevent_server_error(wrapped_function):
             except Exception as e:
                 if not isinstance(e, SetinelServerError):
                     raise(e)
-                if failed_attempts > 20:
+                if failed_attempts > MaxFailuresError.max_failures:
                     raise MaxFailuresError(wrapped_function.__name__, attempts=failed_attempts)
-                aprint(f'Sentinel Server error:\n{e}\nReattempting connection in a few...', level=LogLevels.WARNING)
+                aprint(f'Sentinel Server error:\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds}', level=LogLevels.WARNING)
                 failed_attempts += 1
-                time.sleep(failed_attempts*20)
-
+                time.sleep(failed_attempts*MaxFailuresError.wait_time_seconds)
     return reattempt_execution
 
 class BasePath:
+    debug = True
+    batch_size = 200000
+    regular_sleep_time_seconds = 5
+    progress_tracker: ProgressTracker = ProgressTracker()
     path:str = ''
     name: str = ''
 
     @load_path_and_name
     def __init__(self, path: str = None, name: str = None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         if path and name:
-            name = name.replace(' ','_').replace(':','')
-            self.name = name
+            self.name = name.replace(' ','_').replace(':','')
             self.load_path_variable(path=path)
+        else:
+            aprint('PATH e NAME não informados...', level=LogLevels.DEBUG)
 
     @property
     def full_path(self):
@@ -89,6 +88,33 @@ class BasePath:
             if self.database.feature_dataset:
                 return os.path.join(self.database.feature_dataset_full_path, self.name)
         return os.path.join(self.path, self.name)
+
+    def format_date_as_str(self, current_date: datetime, return_format: str = "%Y-%m-%dT%H:%M:%S"):
+        """Formats a datetime object on the format 1995/10/13T00:00:00"""
+        if isinstance(current_date, datetime):
+            return datetime.strftime(current_date, return_format)
+        if isinstance(current_date, date):
+            return datetime.strftime(current_date, return_format)
+
+    @property
+    def now(self):
+        return datetime.now()
+    
+    @property
+    def now_str(self):
+        return self.format_date_as_str(self.now)
+
+    @property
+    def today(self):
+        return date.today()
+    
+    @property
+    def today_str(self):
+        return self.format_date_as_str(self.today, return_format='%Y%m%d')
+    
+    @property
+    def exists(self):
+        return Exists(self.full_path)
 
     def load_path_variable(self, path: str, subsequent_folders: list = []) -> str:
         """Loads a path variable and guarantees it exists and is accessible
@@ -137,10 +163,6 @@ class BasePath:
             return valid_paths
         else:
             raise UnexistingFeatureError(feature=items)
-        
-    @property
-    def exists(self):
-        return Exists(self.full_path)
         
     def get_files_by_extension(self, folder: str, extension: str = '.jp2', limit: int = 0) -> list:
         """List filed full path based on the desired extension

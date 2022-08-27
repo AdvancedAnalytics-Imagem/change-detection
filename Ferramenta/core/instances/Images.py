@@ -15,7 +15,8 @@ from core.instances.Database import Database, wrap_on_database_editing
 from core.instances.MosaicDataset import MosaicDataset
 from core.libs.Base import (delete_source_files, load_path_and_name,
                             prevent_server_error)
-from core.libs.BaseConfigs import BaseConfigs, BaseDatabasePath
+from core.libs.BaseProperties import BaseProperties
+from core.libs.BaseDBPath import BaseDBPath
 from core.ml_models.ImageClassifier import BaseImageClassifier
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
@@ -24,7 +25,7 @@ from sentinelsat.exceptions import ServerError as SetinelServerError
 from .Feature import Feature
 
 
-class BaseSateliteImage(BaseConfigs):
+class BaseSateliteImage(BaseProperties):
     title: str = None
     datetime: datetime = None
     date: date = None
@@ -134,7 +135,7 @@ class SentinelImage(BaseSateliteImage):
         if Exists(images_folder):
             Delete(images_folder)
 
-class Image(BaseDatabasePath):
+class Image(BaseDBPath):
     _masked_prefix: str = 'Msk_'
     _mosaic_prefix: str = 'Mos_'
     _stretch_prefix: str = 'Stch_'

@@ -10,11 +10,11 @@ from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.instances.MosaicDataset import MosaicDataset
-from core.libs.BaseConfigs import BaseConfigs
+from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import BaseImageClassifier
 
 VARIABLES = Configs()
-BASE_CONFIGS = BaseConfigs()
+BASE_CONFIGS = BaseProperties()
 
 def get_images():
     aprint(message='Iniciando Aquisição de Imagens', progress=True)

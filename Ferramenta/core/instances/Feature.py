@@ -4,7 +4,7 @@ import datetime
 import json
 import os
 import time
-from datetime import datetime, date
+from datetime import date, datetime
 
 from arcpy import (CopyFeatures_management, Describe, Exists,
                    FeatureClassToFeatureClass_conversion,
@@ -21,7 +21,7 @@ from arcpy.da import SearchCursor
 from arcpy.management import AddField, CalculateField, Delete
 from core._logs import *
 from core.libs.Base import load_path_and_name
-from core.libs.BaseConfigs import BaseDatabasePath
+from core.libs.BaseDBPath import BaseDBPath
 from core.libs.Enums import FieldType
 from core.libs.ErrorManager import (DatabaseInsertionError, MaxFailuresError,
                                     UnexistingFeatureError)
@@ -86,7 +86,7 @@ class FieldManager:
         return {"field_type":field_type}
 
 
-class Feature(BaseDatabasePath, CursorManager):
+class Feature(BaseDBPath, CursorManager):
     _fields: list = []
     _failed_ids: list = []
     _current_batch: list = []

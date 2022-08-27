@@ -8,11 +8,11 @@ from core._constants import *
 from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image
-from core.libs.BaseConfigs import BaseConfigs
+from core.libs.BaseProperties import BaseProperties
 from core.services.SateliteImagery.ImageryServices import Cbers, Sentinel2
 
 
-class ImageAcquisition(BaseConfigs):
+class ImageAcquisition(BaseProperties):
     current_image: Image
     historic_image: Image
 

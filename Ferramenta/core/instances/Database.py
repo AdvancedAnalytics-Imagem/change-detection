@@ -22,9 +22,6 @@ class SessionManager(BasePath):
     is_editing: bool = False
     _previous_workspace: str = None
     _current_session: Editor = None
-    
-    def __init__(self, *args, **kwargs):
-        super(SessionManager, self).__init__(*args, **kwargs)
 
     @property
     def is_gdb(self) -> bool:

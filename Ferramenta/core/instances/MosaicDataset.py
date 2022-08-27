@@ -7,13 +7,13 @@ from arcpy import (CreateMosaicDataset_management, Describe, Exists, ListDataset
 from arcpy.management import AddRastersToMosaicDataset
 from core._logs import *
 from core.libs.Base import load_path_and_name, prevent_server_error
-from core.libs.BaseConfigs import BaseDatabasePath
+from core.libs.BaseDBPath import BaseDBPath
 from core.libs.ErrorManager import MosaicDatasetError
 from core.instances.Feature import Feature
 from .Database import Database, wrap_on_database_editing
 
 
-class MosaicDataset(BaseDatabasePath):
+class MosaicDataset(BaseDBPath):
     prefix: str = 'MosDtst_'
     _coordinate_system: SpatialReference = SpatialReference(4326) # GCS_WGS_1984
 

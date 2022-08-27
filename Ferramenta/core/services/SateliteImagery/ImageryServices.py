@@ -12,7 +12,7 @@ from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image, SentinelImage
 from core.libs.Base import ProgressTracker, prevent_server_error
-from core.libs.BaseConfigs import BaseConfigs
+from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import (BaseImageClassifier,
                                             Sentinel2ImageClassifier)
 from nbformat import ValidationError
@@ -20,7 +20,7 @@ from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
 
 
-class BaseImageAcquisitionService(BaseConfigs):
+class BaseImageAcquisitionService(BaseProperties):
     gdb_name = 'ServicesSupportData.gdb'
     images_folder: str = None
 

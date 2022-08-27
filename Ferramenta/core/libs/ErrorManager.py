@@ -72,12 +72,13 @@ class SavingEditingSessionError(Error):
 
 class MaxFailuresError(Error):
     """Handler for failed attempts that exceed a maximum limit"""
-    max_failures = 60
+    max_failures: int = 60 # Maximum number or attempts
+    wait_time_seconds: int = 10 # Time increased per attempt (total time until timeout == 60*10 = 5h 5min)
     
     def __init__(self, method: str, attempts: int, error: Error = ''):
         self.method = method
         self.attempts = attempts
-        self.message = f'O método {method} falhou {attempts} vezes consecutivas.\n{error}'
+        self.message = f'Timeout Error.\nO método {method} falhou {attempts-1} vezes consecutivas.\n{error}'
         super().__init__(self.message)
 
 class MosaicDatasetError(Error):
@@ -104,4 +105,11 @@ class InvalidPathError(Error):
     def __init__(self, object):
         self.object = object
         self.message = f'Não foi possível encontrar o caminho, atributo "path" não configurado.\n{object.__dict__}'
+        super().__init__(self.message)
+
+class InvalidMLClassifierError(Error):
+    """Error manager for a ML classifier other then 'CPU' or 'GPU'"""
+
+    def __init__(self, p_type: str):
+        self.message = f'Não é possível utilizar {type} como método de processamento, favor informar "CPU" ou "GPU"'
         super().__init__(self.message)
