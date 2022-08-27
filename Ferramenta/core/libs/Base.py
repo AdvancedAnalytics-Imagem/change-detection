@@ -186,3 +186,36 @@ class BasePath:
                 return feature_name
             feature_name = f'{name_without_extension}_{i}{extension}'
         return name
+
+    @load_path_and_name
+    def unzip_file(self, path: str, name: str) -> str:
+        full_path = os.path.join(path, name)
+
+        if not name.endswith(".zip") or not os.path.exists(full_path):
+            return
+        
+        try:
+            zipObj = ZipFile(full_path, "r")
+            zipObj.extractall(path)
+            zipObj.close()
+            os.remove(full_path)
+        except Exception:
+            aprint(f"O arquivo {name} está corrompido", level=LogLevels.WARNING)
+            os.remove(full_path)
+        return full_path.replace('.zip','')
+
+    def unzip_files(self, files: list = [], folder: str = []) -> list:
+        extracted_list = []
+
+        if not files and folder:
+            if os.listdir(folder):
+                # Extrai o arquivo zip e depois deleta o arquivo zip
+                for item in os.listdir(folder):
+                    extracted_list.append(self.unzip_file(path=folder, name=item))
+            else:
+                aprint(f"Pasta {folder} vazia", level=LogLevels.WARNING)
+        elif files:
+            for item in files:
+                extracted_list.append(self.unzip_file(path=folder, name=item))
+
+        return [item for item in extracted_list if item]
