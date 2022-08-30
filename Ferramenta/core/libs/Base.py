@@ -63,7 +63,7 @@ def prevent_server_error(wrapped_function):
     return reattempt_execution
 
 class BasePath:
-    debug = True
+    debug = False
     batch_size = 200000
     regular_sleep_time_seconds = 5
     progress_tracker: ProgressTracker = ProgressTracker()
@@ -75,8 +75,6 @@ class BasePath:
         if path and name:
             self.name = name.replace(' ','_').replace(':','')
             self.load_path_variable(path=path)
-        else:
-            aprint('PATH e NAME não informados...', level=LogLevels.DEBUG)
 
     @property
     def full_path(self):

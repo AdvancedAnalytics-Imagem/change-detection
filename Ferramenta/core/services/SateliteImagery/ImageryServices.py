@@ -55,7 +55,6 @@ class Sentinel2(BaseImageAcquisitionService):
     _scene_min_coverage_threshold: float = 1.5
     _combined_scene_min_coverage_threshold: float = 90
     _tiles_layer_name: str = 'grade_sentinel_brasil'
-    _query_days_before_today: int = 30
     max_cloud_coverage: int = 20
     selected_tyles: any = None
     available_images: dict = {}
@@ -79,9 +78,7 @@ class Sentinel2(BaseImageAcquisitionService):
     def _select_tiles(self, area_of_interest: Feature, where_clause: str = None) -> Feature:
         if where_clause:
             area_of_interest.select_by_attributes(where_clause=where_clause)
-        aprint(f'Select Layer: {self.tiles_layer}')
         self.selected_tyles = Feature(path=self.tiles_layer.select_by_location(intersecting_feature=area_of_interest))
-        aprint(f'Selected Tiles: {self.selected_tyles}')
         return self.selected_tyles
     
     def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None) -> list:
@@ -113,13 +110,13 @@ class Sentinel2(BaseImageAcquisitionService):
         products.update(api.query(**payload))
         return api.to_geojson(products).features
 
-    def query_available_images(self, area_of_interest: Feature, max_date: datetime = None) -> dict:
+    def query_available_images(self, area_of_interest: Feature, max_date: datetime = None, days_period: int = 30) -> dict:
         if not max_date: max_date = self.today
-        begin_date = max_date - timedelta(days=self._query_days_before_today)
+        begin_date = max_date - timedelta(days=days_period)
         end_date = max_date + timedelta(days=1)
         aoi_geojson = area_of_interest.geojson_geometry()
         area = geojson_to_wkt(aoi_geojson)
-        aprint(f'Buscando por imagens disponíveis entre {begin_date} e {end_date} na área de interesse')
+        aprint(f'Buscando por imagens disponíveis entre {begin_date} e {end_date}...')
         for api in self.apis:
             identified_images = self._query_images(api=api, area=area, begin_date=begin_date, end_date=end_date)
             self.available_images = {}
@@ -193,7 +190,7 @@ class Sentinel2(BaseImageAcquisitionService):
         best_available_image = self._get_best_possile_images(list_of_images=available_tile_images, tile_name=tile_name)
 
         if not best_available_image:
-            aprint(f'Não existe imagem disponível para o tile {tile_name} no intervalo dos últimos {self._query_days_before_today} que se enquadre nos parâmetros de filtro especificados')
+            aprint(f'Não existe imagem disponível para o tile {tile_name}.', level=LogLevels.ERROR)
             return []
 
         if not isinstance(best_available_image, list): best_available_image = [best_available_image]

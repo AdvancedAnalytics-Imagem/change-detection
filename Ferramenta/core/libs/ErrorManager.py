@@ -10,10 +10,12 @@ class Error(Exception):
 
     """Base class for other exceptions"""
     def __init__(self, message: str):
-        aprint(message, level=LogLevels.CRITICAL)
         if self.interrupt_execution:
+            aprint(message, level=LogLevels.CRITICAL)
             aprint('Interrompendo execução', level=LogLevels.WARNING)
             sys.exit()
+        else:
+            aprint(message, level=LogLevels.INFO)
 
 class FolderAccessError(Error):
     """Exception for an unaccessible folder"""
@@ -112,4 +114,20 @@ class InvalidMLClassifierError(Error):
 
     def __init__(self, p_type: str):
         self.message = f'Não é possível utilizar {type} como método de processamento, favor informar "CPU" ou "GPU"'
+        super().__init__(self.message)
+
+class VariablesLoadingError(Error):
+    """Error for logging variables that failed to load"""
+    
+    def __init__(self, variables):
+        self.interrupt_execution = False
+        self.message = f'Não foi possível carregar as variáveis:\n{variables}'
+        super().__init__(self.message)
+
+class DeletionError(Error):
+    """Custom logging for Deletion Errors"""
+
+    def __init__(self, path):
+        self.interrupt_execution = False
+        self.message = f'Não foi possível deletar o diretório:\n{path}'
         super().__init__(self.message)

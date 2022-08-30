@@ -9,7 +9,7 @@ from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.libs.BaseProperties import BaseProperties
-from core.services.SateliteImagery.ImageryServices import Cbers, Sentinel2
+from core.services.SateliteImagery.ImageryServices import Cbers, Sentinel2, BaseImageAcquisitionService
 
 
 class ImageAcquisition(BaseProperties):
@@ -21,7 +21,7 @@ class ImageAcquisition(BaseProperties):
         SENTINEL2 = Sentinel2
         CBERS = Cbers
 
-    def __init__(self, service: str = 'SENTINEL2', credentials: list = [], downloads_folder: str = None) -> None:        
+    def __init__(self, service: Services, credentials: list = [], downloads_folder: str = None) -> None:        
         self.service = self.Services[service].value(downloads_folder=downloads_folder)
         self.service.authenticate_api(credentials=credentials)
 
@@ -121,3 +121,49 @@ class ImageAcquisition(BaseProperties):
             hist_tiles_max_date = min_search_date
 
         self.historic_image.date_created = hist_tiles_max_date
+
+    def get_image(self, max_date: datetime, days_period: int, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True):
+        if not results_output_location:
+            results_output_location = self.temp_db
+
+        if max_cloud_coverage:
+            self.service.max_cloud_coverage = max_cloud_coverage
+        
+        intersecting_tiles = self.service.get_selected_tiles_names(area_of_interest=area_of_interest)
+        self.progress_tracker.init_tracking(total=len(intersecting_tiles)*2, name='Busca por Imagens')
+
+        #* Image acquisition
+
+        images = {}
+        image_name = f'Img{self.today_str}'
+
+        resulting_image = os.path.join(results_output_location.full_path, f'Stch_Msk_Mos_{image_name}')
+        if Exists(resulting_image):
+            return Image(path=resulting_image)
+
+        self.service.query_available_images(
+            area_of_interest=area_of_interest,
+            max_date=max_date,
+            days_period=days_period
+        )
+
+        for tile in intersecting_tiles:
+            tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest)
+            for tile_image in tile_images:
+                images[tile_image.datetime] = [*images.get(tile_image.datetime,[]), tile_image]
+            self.progress_tracker.report_progress(add_progress=True)
+
+        composition_images = []
+        [composition_images.extend(i) for i in images.values()]
+
+        image = Image(
+            path=results_output_location.full_path,
+            name=image_name,
+            images_for_composition=composition_images,
+            compose_as_single_image=compose_as_single_image,
+            mask=area_of_interest
+        )
+        tiles_dates = list(images.keys())
+        tiles_dates.sort()
+        image.date_created = tiles_dates[-1]
+        return image

@@ -4,7 +4,7 @@ import os
 
 from core._constants import *
 from core._logs import *
-from core.instances.Database import Database
+from core.instances.Database import Database, load_path_and_name
 from core.libs.BaseProperties import BaseProperties
 
 

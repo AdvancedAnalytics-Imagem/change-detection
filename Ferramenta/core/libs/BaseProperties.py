@@ -2,27 +2,26 @@
 #!/usr/bin/python
 import os
 
+from arcpy import Exists
+from arcpy.management import Delete
 from core._constants import *
 from core._logs import *
 from core.instances.Database import Database
 from core.libs.Base import BasePath
-from core.libs.ErrorManager import InvalidMLClassifierError
+from core.libs.ErrorManager import DeletionError, InvalidMLClassifierError
 
 
 class BaseProperties(BasePath):
     _temp_db: Database = None
+    _image_storage: str = None
     
     @property
     def delete_temp_files_while_processing(self) -> bool:
-        if os.environ.get('DELETE_TEMP_FILES_WHILE_PROCESSING', False) == 'True':
-            return True
-        return False
+        return os.environ.get('DELETE_TEMP_FILES_WHILE_PROCESSING', False) == 'True'
 
     @property
     def delete_temp_files(self) -> bool:
-        if os.environ.get('DELETE_TEMP_FILES', False) == 'True':
-            return True
-        return False
+        return os.environ.get('DELETE_TEMP_FILES', False) == 'True'
 
     @property
     def temp_dir(self) -> str:
@@ -49,16 +48,18 @@ class BaseProperties(BasePath):
         return self._temp_db
 
     @property
-    def ml_processor(self) -> str:
-        """Type of processor used for ML classification
-            Returns:
-                str: Either 'CPU' or 'GPU'
-        """
-        processor_type = os.environ.get('ML_PROCESSOR_TYPE', 'CPU')
-        if processor_type not in ['CPU', 'GPU']:
-            raise InvalidMLClassifierError(p_type=processor_type)
-        return processor_type
-
-    @property
     def n_cores(self) -> int:
         return int(os.environ.get('N_CORES', os.cpu_count()))
+
+    def delete_temporary_content(self) -> None:
+        if self.delete_temp_files:
+            if Exists(self.temp_dir):
+                try:
+                    Delete(self.temp_dir)
+                except Exception as e:
+                    DeletionError(path=self.temp_dir)
+            if Exists(self.temp_db):
+                try:
+                    Delete(self.temp_db)
+                except Exception as e:
+                    DeletionError(path=self.temp_db)
