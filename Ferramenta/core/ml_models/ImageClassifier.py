@@ -22,7 +22,7 @@ class ClassAttribute:
 class BaseImageClassifier(BasePath):
     ml_model_extension: str = '.dlpk'
     ml_model_name: str = ''
-    class_field: str = 'CLASSE'
+    class_field: str = 'CLASS'
 
     class Classes(ExtendedEnum):
         pass
