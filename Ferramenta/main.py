@@ -1,6 +1,7 @@
 ﻿# -*- coding: utf-8 -*-
 #!/usr/bin/python
 import datetime
+import os
 from datetime import datetime
 
 from arcpy import GetParameter, GetParameterAsText, GetParameterInfo

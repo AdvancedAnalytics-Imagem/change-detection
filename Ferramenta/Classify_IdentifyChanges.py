@@ -8,9 +8,11 @@ from arcpy import GetParameter, GetParameterAsText, GetParameterInfo
 from core._logs import *
 from core.adapters.SateliteImagery import ImageAcquisition
 from core.configs.Configs import Configs
+from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import BaseImageClassifier
+
 
 def load_arcgis_variables(variables_obj: Configs) -> Configs:
     variables_obj.current_image = None
