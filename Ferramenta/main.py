@@ -187,20 +187,27 @@ def main():
     tile_names = ', '.join(images.service.tile_names)
     VARIABLES.classificacao_atual.append_dataset(origin=current_classification, extra_constant_values={
         'DATA':images.current_image.date_created,
+        'DataImagem':images.current_image.date_created,
         'DATA_PROC':images.current_image.date_processed,
+        'DataProcessamento':images.current_image.date_processed,
         'SENSOR':VARIABLES.sensor,
         'TILES':tile_names
     })
     VARIABLES.classificacao_historica.append_dataset(origin=historic_classification, extra_constant_values={
         'DATA':images.historic_image.date_created,
+        'DataImagem':images.historic_image.date_created,
         'DATA_PROC':images.historic_image.date_created,
+        'DataProcessamento':images.historic_image.date_created,
         'SENSOR':VARIABLES.sensor,
         'TILES':tile_names
     })
     VARIABLES.deteccao_de_mudancas.append_dataset(origin=change_detection, extra_constant_values={
         'DATA_A':images.current_image.date_created,
+        'DataImgAtual':images.current_image.date_created,
         'DATA_H':images.historic_image.date_created,
+        'DataImgHist':images.historic_image.date_created,
         'DATA_PROC':images.current_image.date_processed,
+        'DataProcessamento':images.current_image.date_processed,
         'SENSOR':VARIABLES.sensor,
         'TILES':tile_names
     })
