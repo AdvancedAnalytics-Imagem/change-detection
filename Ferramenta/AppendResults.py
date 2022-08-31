@@ -82,14 +82,12 @@ class AppendResults:
         self.configs = configs
 
     def append_data(self):
-        tile_names = ', '.join(images.service.tile_names)
-        image_acquisition_adapter = ImageAcquisition(
+        img_acqstn_adptr = ImageAcquisition(
             service=self.variables.sensor, # TODO Check sensor type/string
-            credentials=self.variables.sentinel_api_auth,
-            downloads_folder=self.variables.download_storage
         )
 
-        if self.variables.current_classification:
+        if self.variables.current_classification and self.variables.current_classification_dest:
+            tile_names = ', '.join(img_acqstn_adptr.service.get_selected_tiles_names(area_of_interest=self.variables.current_classification))
             self.variables.current_classification_dest.append_dataset(
                 origin=self.variables.current_classification,
                 extra_constant_values={
@@ -99,7 +97,12 @@ class AppendResults:
                     'TILES':tile_names
                 }
             )
-        if self.variables.historic_classification:
+            aprint('Append de dados atuais concluído com sucesso')
+
+        if self.variables.historic_classification and self.variables.historic_classification_dest:
+            if not tile_names:
+                tile_names = ', '.join(img_acqstn_adptr.service.get_selected_tiles_names(area_of_interest=self.variables.historic_classification))
+
             self.variables.historic_classification_dest.append_dataset(
                 origin=self.variables.historic_classification,
                 extra_constant_values={
@@ -109,7 +112,12 @@ class AppendResults:
                     'TILES':tile_names
                 }
             )
-        if self.variables.change_detection:
+            aprint('Append de dados histórico concluído com sucesso')
+
+        if self.variables.change_detection and self.variables.change_detection_dest:
+            if not tile_names:
+                tile_names = ', '.join(img_acqstn_adptr.service.get_selected_tiles_names(area_of_interest=self.variables.change_detection))
+                
             self.variables.change_detection_dest.append_dataset(
                 origin=self.variables.change_detection,
                 extra_constant_values={
@@ -120,12 +128,11 @@ class AppendResults:
                     'TILES':tile_names
                 }
             )
+            aprint('Append de dados de classificação concluído com sucesso')
+
+        aprint('\n_ _______________________ _\nAppend de dados concluído com sucesso')
         
 if __name__ == '__main__':
-    detected_changes = AppendResults(variables=VARIABLES, configs=BASE_CONFIGS).append_data()
-    aprint(f'''\n_ _______________________ _
-               \nAppend de dados concluído com sucesso, resultados podem ser encontradas em:
-               \n{detected_changes.full_path}
-    ''')
+    AppendResults(variables=VARIABLES, configs=BASE_CONFIGS).append_data()
 
     BASE_CONFIGS.delete_temporary_content()

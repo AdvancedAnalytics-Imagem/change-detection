@@ -252,6 +252,8 @@ class Image(BaseDBPath):
         if isinstance(destination, Database):
             destination = destination.full_path
         else:
+            if not Exists(destination):
+                os.makedirs(destination)
             format = 'TIFF'
             output_name += '.tif'
 

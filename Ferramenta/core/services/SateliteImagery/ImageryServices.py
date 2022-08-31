@@ -38,11 +38,11 @@ class BaseImageAcquisitionService(BaseProperties):
     def authenticate_api(self, *args, **kwargs) -> None:
         pass
     
-    @property    
+    @property
     def ml_model(self) -> BaseImageClassifier:
         pass
 
-    def get_selected_tiles_names(self, *args, **kwargs) -> list:
+    def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None, *args, **kwargs) -> list:
         pass
 
     def query_available_images(self, *args, **kwargs) -> dict:
@@ -56,7 +56,7 @@ class Sentinel2(BaseImageAcquisitionService):
     _combined_scene_min_coverage_threshold: float = 90
     _tiles_layer_name: str = 'grade_sentinel_brasil'
     max_cloud_coverage: int = 20
-    selected_tyles: any = None
+    selected_tiles: any = None
     available_images: dict = {}
     apis: list = []
     
@@ -78,13 +78,13 @@ class Sentinel2(BaseImageAcquisitionService):
     def _select_tiles(self, area_of_interest: Feature, where_clause: str = None) -> Feature:
         if where_clause:
             area_of_interest.select_by_attributes(where_clause=where_clause)
-        self.selected_tyles = Feature(path=self.tiles_layer.select_by_location(intersecting_feature=area_of_interest))
-        return self.selected_tyles
+        self.selected_tiles = Feature(path=self.tiles_layer.select_by_location(intersecting_feature=area_of_interest))
+        return self.selected_tiles
     
     def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None) -> list:
-        if not self.selected_tyles:
+        if not self.selected_tiles:
             self._select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
-        self.tile_names = [i[0] for i in SearchCursor(self.selected_tyles.full_path, ['NAME'])]
+        self.tile_names = [i[0] for i in SearchCursor(self.selected_tiles.full_path, ['NAME'])]
         aprint(f'Tiles selecionados:\n{",".join(self.tile_names)}')
         return self.tile_names
     

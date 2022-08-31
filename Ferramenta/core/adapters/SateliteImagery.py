@@ -23,7 +23,8 @@ class ImageAcquisition(BaseProperties):
 
     def __init__(self, service: Services, credentials: list = [], downloads_folder: str = None) -> None:        
         self.service = self.Services[service].value(downloads_folder=downloads_folder)
-        self.service.authenticate_api(credentials=credentials)
+        if credentials:
+            self.service.authenticate_api(credentials=credentials)
 
     def set_downloaded_images_path(self, *args, **kwargs) -> None:
         self.service.set_downloaded_images_path(*args, **kwargs)
