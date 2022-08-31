@@ -150,7 +150,7 @@ def add_image_to_mosaic_dataset(image: Image, location: Database, mosaic_dataset
     new_image = Image(
         path=image.copy_image(
             delete_source=False,
-            destination=location.full_path,
+            destination=location,
             output_name=output_name
         ),
         stretch_image=False

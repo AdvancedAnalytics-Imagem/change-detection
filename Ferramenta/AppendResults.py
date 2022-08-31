@@ -8,6 +8,7 @@ from arcpy import GetParameter, GetParameterAsText, GetParameterInfo
 from core._logs import *
 from core.adapters.SateliteImagery import ImageAcquisition
 from core.configs.Configs import Configs
+from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import BaseImageClassifier
@@ -25,35 +26,50 @@ def load_arcgis_variables(variables_obj: Configs) -> Configs:
         variables_obj.debug = True
 
     if variables_obj.arcgis_execution:
-        #* Imagem atual
+        #* Classificação atual
         change_detection = GetParameterAsText(0)
-        if change_detection and variables_obj.change_detection != change_detection:
+        if change_detection:
             variables_obj.change_detection = Feature(path=change_detection)
 
         #* Data da imagem atual
         current_image_date = GetParameterAsText(1)
-        if current_image_date and variables_obj.current_image_date != current_image_date:
+        if current_image_date:
             variables_obj.current_image_date = current_image_date
         
         #* Data da imagem histórica
         historic_image_date = GetParameterAsText(2)
-        if historic_image_date and variables_obj.historic_image_date != historic_image_date:
+        if historic_image_date:
             variables_obj.historic_image_date = historic_image_date
         
         #* Data do processamento
         processing_date = GetParameterAsText(3)
-        if processing_date and variables_obj.processing_date != processing_date:
+        if processing_date:
             variables_obj.processing_date = processing_date
+
+        #* Destino da classificação atual
+        change_detection_dest = GetParameterAsText(4)
+        if change_detection_dest:
+            variables_obj.change_detection_dest = Feature(path=change_detection_dest)
         
         #* Classificação atual
-        current_classification = GetParameterAsText(3)
-        if current_classification and variables_obj.current_classification != current_classification:
+        current_classification = GetParameterAsText(5)
+        if current_classification:
             variables_obj.current_classification = Feature(path=current_classification)
         
+        #* Destino da Classificação atual
+        current_classification_dest = GetParameterAsText(6)
+        if current_classification_dest:
+            variables_obj.current_classification_dest = Feature(path=current_classification_dest)
+        
         #* Classificação histórica
-        historic_classification = GetParameterAsText(3)
-        if historic_classification and variables_obj.historic_classification != historic_classification:
+        historic_classification = GetParameterAsText(7)
+        if historic_classification:
             variables_obj.historic_classification = Feature(path=historic_classification)
+            
+        #* Destino da Classificação histórica
+        historic_classification_dest = GetParameterAsText(8)
+        if historic_classification_dest:
+            variables_obj.historic_classification_dest = Feature(path=historic_classification_dest)
 
     return variables_obj.init_base_variables()
 
@@ -67,8 +83,14 @@ class AppendResults:
 
     def append_data(self):
         tile_names = ', '.join(images.service.tile_names)
+        image_acquisition_adapter = ImageAcquisition(
+            service=self.variables.sensor, # TODO Check sensor type/string
+            credentials=self.variables.sentinel_api_auth,
+            downloads_folder=self.variables.download_storage
+        )
+
         if self.variables.current_classification:
-            self.variables.classificacao_atual.append_dataset(
+            self.variables.current_classification_dest.append_dataset(
                 origin=self.variables.current_classification,
                 extra_constant_values={
                     'DATA':self.variables.current_image_date,
@@ -78,7 +100,7 @@ class AppendResults:
                 }
             )
         if self.variables.historic_classification:
-            self.variables.classificacao_historica.append_dataset(
+            self.variables.historic_classification_dest.append_dataset(
                 origin=self.variables.historic_classification,
                 extra_constant_values={
                     'DATA':self.variables.historic_image_date,
@@ -88,7 +110,7 @@ class AppendResults:
                 }
             )
         if self.variables.change_detection:
-            self.variables.deteccao_de_mudancas.append_dataset(
+            self.variables.change_detection_dest.append_dataset(
                 origin=self.variables.change_detection,
                 extra_constant_values={
                     'DATA_A':self.variables.current_image_date,
