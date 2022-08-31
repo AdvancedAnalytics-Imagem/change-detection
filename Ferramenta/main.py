@@ -15,7 +15,7 @@ from core.instances.Images import Image
 from core.instances.MosaicDataset import MosaicDataset
 from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import BaseImageClassifier
-
+from core.libs.ErrorManager import InvalidMLClassifierError
 
 def load_arcgis_variables(variables_obj):
     if len(GetParameterInfo())>0:
@@ -181,8 +181,6 @@ def main():
     historic_classification = classify_image(image=images.historic_image, ml_model=images.service.ml_model)
 
     change_detection = detect_changes(current=current_classification, historic=historic_classification)
-
-    aprint(message='Exportando resultados', progress=True)
 
     tile_names = ', '.join(images.service.tile_names)
     VARIABLES.classificacao_atual.append_dataset(origin=current_classification, extra_constant_values={

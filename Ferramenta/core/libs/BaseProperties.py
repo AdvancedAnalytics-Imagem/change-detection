@@ -8,7 +8,7 @@ from core._constants import *
 from core._logs import *
 from core.instances.Database import Database
 from core.libs.Base import BasePath
-from core.libs.ErrorManager import DeletionError, InvalidMLClassifierError
+from core.libs.ErrorManager import DeletionError
 
 
 class BaseProperties(BasePath):
