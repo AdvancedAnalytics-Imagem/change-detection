@@ -51,6 +51,9 @@ class Configs(BasePath):
         if hasattr(self, 'output_mosaic_dataset_historic') and self.output_mosaic_dataset_historic:
             if not isinstance(self.output_mosaic_dataset_historic, MosaicDataset):
                 self.output_mosaic_dataset_historic = MosaicDataset(path=self.output_mosaic_dataset_historic)
+
+        if hasattr(self, 'image_storage') and self.image_storage:
+            os.environ['IMAGE_STORAGE'] = self.image_storage
         
         if hasattr(self, 'temp_dir') and self.temp_dir:
             os.environ['TEMP_DIR'] = self.temp_dir

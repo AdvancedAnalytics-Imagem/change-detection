@@ -132,7 +132,7 @@ class Database(SessionManager):
 
         if not Exists(self.full_path):
             if self.name.endswith('.sde'):
-                raise UnexistingSDEConnectionError(sde=self.full_path, error=e)
+                raise UnexistingSDEConnectionError(sde=self.full_path)
             try:
                 if create:
                     CreateFileGDB_management(path, self.name)
