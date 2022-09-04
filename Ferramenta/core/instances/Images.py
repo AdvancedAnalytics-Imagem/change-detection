@@ -144,8 +144,6 @@ class Image(BaseDBPath):
     mosaic_dataset: MosaicDataset = None
 
     def __init__(self, path: str, name: str = None, images_for_composition: list = [], mask: Feature = None, compose_as_single_image: bool = True, stretch_image: bool = True, *args, **kwargs):
-        self.date_processed: datetime = self.now
-        self.date_created: datetime = self.now
         super(Image, self).__init__(path=path, name=name, *args, **kwargs)
         if images_for_composition:
             self.mosaic_images(images_for_composition=images_for_composition, compose_as_single_image=compose_as_single_image)
@@ -153,7 +151,36 @@ class Image(BaseDBPath):
             self.extract_by_mask(area_of_interest=mask)
         if stretch_image:
             self.stretch_image()
+        self.get_image_dates()
     
+    @staticmethod
+    def attempt_date_standards(string) -> datetime:
+        date_standards = [
+            '%Y%m%d%h%m%s',
+            '%Y%m%dT%h%m%sz',
+            '%Y-%m-%d %h:%m:%s',
+            '%Y/%m/%d %h:%m:%s',
+            '%Y%m%d',
+            '%Y-%m-%d',
+            '%Y/%m/%d',
+        ]
+        for standard in date_standards:
+            try:
+                return datetime.strptime(string, standard)
+            except:
+                continue
+
+    def get_image_dates(self):
+        self.date_processed: datetime = self.now
+        self.date_created: datetime = self.now
+
+        if self.name:
+            parts = self.name.split('_')
+            for part in parts:
+                date = self.attempt_date_standards(part)
+                if date:
+                    self.date_created = date
+
     @delete_source_files
     @wrap_on_database_editing
     def mosaic_images(self, images_for_composition: list, compose_as_single_image: bool) -> str:

@@ -131,3 +131,10 @@ class DeletionError(Error):
         self.interrupt_execution = False
         self.message = f'Não foi possível deletar o diretório:\n{path}'
         super().__init__(self.message)
+
+class NoBaseTilesLayerFound(Error):
+    """Error for an invalid or unexisting tiles layer"""
+
+    def __init__(self, message = ''):
+        self.message = f'Não foi possível encontrar a layer de tiles.\n{message}'
+        super().__init__(self.message)

@@ -13,7 +13,9 @@ from core.instances.Feature import Feature
 from core.instances.Images import Image, SentinelImage
 from core.libs.Base import ProgressTracker, prevent_server_error
 from core.libs.BaseProperties import BaseProperties
+from core.libs.ErrorManager import NoBaseTilesLayerFound
 from core.ml_models.ImageClassifier import (BaseImageClassifier,
+                                            CbersImageClassifier,
                                             Sentinel2ImageClassifier)
 from nbformat import ValidationError
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
@@ -23,6 +25,8 @@ from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
 class BaseImageAcquisitionService(BaseProperties):
     gdb_name = 'ServicesSupportData.gdb'
     images_folder: str = None
+    _tiles_layer_name: str = ''
+    tiles_layer: Feature = None
 
     def __init__(self, downloads_folder: str = None, *args, **kwargs) -> None:
         if not downloads_folder: downloads_folder = DOWNLOADS_DIR
@@ -42,14 +46,39 @@ class BaseImageAcquisitionService(BaseProperties):
     def ml_model(self) -> BaseImageClassifier:
         pass
 
-    def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None, *args, **kwargs) -> list:
-        pass
+    def _select_tiles(self, area_of_interest: Feature, where_clause: str = None) -> Feature:
+        if where_clause:
+            area_of_interest.select_by_attributes(where_clause=where_clause)
+        if not self.tiles_layer:
+            raise NoBaseTilesLayerFound()
+        self.selected_tiles = Feature(path=self.tiles_layer.select_by_location(intersecting_feature=area_of_interest))
+        return self.selected_tiles
+    
+    def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None) -> list:
+        if not self.selected_tiles:
+            self._select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
+        self.tile_names = [i[0] for i in SearchCursor(self.selected_tiles.full_path, ['NAME'])]
+        aprint(f'Tiles selecionados:\n{",".join(self.tile_names)}')
+        return self.tile_names
 
     def query_available_images(self, *args, **kwargs) -> dict:
         pass
 
     def get_image(self, *args, **kwargs) -> list:
         pass
+
+
+class Cbers(BaseImageAcquisitionService):
+    _tiles_layer_name = 'grade_cebers_brasil'
+    
+    def __init__(self) -> None:
+        super().__init__()
+        self.tiles_layer = self.load_feature_variable(gdb=self.data_gdb, feature_name=self._tiles_layer_name)
+
+    @property
+    def ml_model(self) -> BaseImageClassifier:
+        return CbersImageClassifier()
+
 
 class Sentinel2(BaseImageAcquisitionService):
     _scene_min_coverage_threshold: float = 1.5
@@ -72,21 +101,8 @@ class Sentinel2(BaseImageAcquisitionService):
             self.apis.append(SentinelAPI(*list(credential.values())))
 
     @property    
-    def ml_model(self):
+    def ml_model(self) -> BaseImageClassifier:
         return Sentinel2ImageClassifier()
-
-    def _select_tiles(self, area_of_interest: Feature, where_clause: str = None) -> Feature:
-        if where_clause:
-            area_of_interest.select_by_attributes(where_clause=where_clause)
-        self.selected_tiles = Feature(path=self.tiles_layer.select_by_location(intersecting_feature=area_of_interest))
-        return self.selected_tiles
-    
-    def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None) -> list:
-        if not self.selected_tiles:
-            self._select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
-        self.tile_names = [i[0] for i in SearchCursor(self.selected_tiles.full_path, ['NAME'])]
-        aprint(f'Tiles selecionados:\n{",".join(self.tile_names)}')
-        return self.tile_names
     
     @prevent_server_error
     def _query_images(self, api: any, area: str, begin_date: datetime, end_date: datetime) -> list:
@@ -201,11 +217,3 @@ class Sentinel2(BaseImageAcquisitionService):
 
         # List of best images Instances (already downloaded)
         return best_available_image
-
-
-class Cbers(BaseImageAcquisitionService):
-    _tiles_layer_name = 'grade_cebers_brasil'
-    
-    def __init__(self) -> None:
-        super().__init__()
-        self.tiles_layer = self.load_feature_variable(gdb=self.data_gdb, feature_name=self._tiles_layer_name)
