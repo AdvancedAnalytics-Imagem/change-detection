@@ -22,10 +22,14 @@ sensor: "SENTINEL2"
 compose_as_single_image: True # Caso seja False, ao invés de mosaicar os tiles da área de interesse e clipar na região, os tiles serão processados em um Mosaic Dataset
 classification_arguments: "padding 70;batch_size 2;predict_background True;tile_size 256"
 classification_processor: "CPU"
-n_cores: 1
+n_cores: 4
 
 # Parâmetros de Execução
+<<<<<<< HEAD
 debug: True
 download_images: True
 classify_images: True
 insert_on_database: True
+=======
+debug: True
+>>>>>>> e40e3023ccfcbcf46a987a6d478035b1c1ca109b

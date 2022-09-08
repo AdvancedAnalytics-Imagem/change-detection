@@ -10,10 +10,12 @@ class Error(Exception):
 
     """Base class for other exceptions"""
     def __init__(self, message: str):
-        aprint(message, level=LogLevels.CRITICAL)
         if self.interrupt_execution:
+            aprint(message, level=LogLevels.CRITICAL)
             aprint('Interrompendo execução', level=LogLevels.WARNING)
             sys.exit()
+        else:
+            aprint(message, level=LogLevels.INFO)
 
 class FolderAccessError(Error):
     """Exception for an unaccessible folder"""
@@ -72,12 +74,13 @@ class SavingEditingSessionError(Error):
 
 class MaxFailuresError(Error):
     """Handler for failed attempts that exceed a maximum limit"""
-    max_failures = 60
+    max_failures: int = 60 # Maximum number or attempts
+    wait_time_seconds: int = 10 # Time increased per attempt (total time until timeout == 60*10 = 5h 5min)
     
     def __init__(self, method: str, attempts: int, error: Error = ''):
         self.method = method
         self.attempts = attempts
-        self.message = f'O método {method} falhou {attempts} vezes consecutivas.\n{error}'
+        self.message = f'Timeout Error.\nO método {method} falhou {attempts-1} vezes consecutivas.\n{error}'
         super().__init__(self.message)
 
 class MosaicDatasetError(Error):
@@ -104,4 +107,34 @@ class InvalidPathError(Error):
     def __init__(self, object):
         self.object = object
         self.message = f'Não foi possível encontrar o caminho, atributo "path" não configurado.\n{object.__dict__}'
+        super().__init__(self.message)
+
+class InvalidMLClassifierError(Error):
+    """Error manager for a ML classifier other then 'CPU' or 'GPU'"""
+
+    def __init__(self, p_type: str):
+        self.message = f'Não é possível utilizar {type} como método de processamento, favor informar "CPU" ou "GPU"'
+        super().__init__(self.message)
+
+class VariablesLoadingError(Error):
+    """Error for logging variables that failed to load"""
+    
+    def __init__(self, variables):
+        self.interrupt_execution = False
+        self.message = f'Não foi possível carregar as variáveis:\n{variables}'
+        super().__init__(self.message)
+
+class DeletionError(Error):
+    """Custom logging for Deletion Errors"""
+
+    def __init__(self, path):
+        self.interrupt_execution = False
+        self.message = f'Não foi possível deletar o diretório:\n{path}'
+        super().__init__(self.message)
+
+class NoBaseTilesLayerFound(Error):
+    """Error for an invalid or unexisting tiles layer"""
+
+    def __init__(self, message = ''):
+        self.message = f'Não foi possível encontrar a layer de tiles.\n{message}'
         super().__init__(self.message)

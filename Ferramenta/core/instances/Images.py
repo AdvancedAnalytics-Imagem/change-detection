@@ -15,7 +15,8 @@ from core.instances.Database import Database, wrap_on_database_editing
 from core.instances.MosaicDataset import MosaicDataset
 from core.libs.Base import (delete_source_files, load_path_and_name,
                             prevent_server_error)
-from core.libs.BaseConfigs import BaseConfigs, BaseDatabasePath
+from core.libs.BaseProperties import BaseProperties
+from core.libs.BaseDBPath import BaseDBPath
 from core.ml_models.ImageClassifier import BaseImageClassifier
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
@@ -24,7 +25,7 @@ from sentinelsat.exceptions import ServerError as SetinelServerError
 from .Feature import Feature
 
 
-class BaseSateliteImage(BaseConfigs):
+class BaseSateliteImage(BaseProperties):
     title: str = None
     datetime: datetime = None
     date: date = None
@@ -134,7 +135,7 @@ class SentinelImage(BaseSateliteImage):
         if Exists(images_folder):
             Delete(images_folder)
 
-class Image(BaseDatabasePath):
+class Image(BaseDBPath):
     _masked_prefix: str = 'Msk_'
     _mosaic_prefix: str = 'Mos_'
     _stretch_prefix: str = 'Stch_'
@@ -143,8 +144,6 @@ class Image(BaseDatabasePath):
     mosaic_dataset: MosaicDataset = None
 
     def __init__(self, path: str, name: str = None, images_for_composition: list = [], mask: Feature = None, compose_as_single_image: bool = True, stretch_image: bool = True, *args, **kwargs):
-        self.date_processed: datetime = self.now
-        self.date_created: datetime = self.now
         super(Image, self).__init__(path=path, name=name, *args, **kwargs)
         if images_for_composition:
             self.mosaic_images(images_for_composition=images_for_composition, compose_as_single_image=compose_as_single_image)
@@ -152,7 +151,36 @@ class Image(BaseDatabasePath):
             self.extract_by_mask(area_of_interest=mask)
         if stretch_image:
             self.stretch_image()
+        self.get_image_dates()
     
+    @staticmethod
+    def attempt_date_standards(string) -> datetime:
+        date_standards = [
+            '%Y%m%d%h%m%s',
+            '%Y%m%dT%h%m%sz',
+            '%Y-%m-%d %h:%m:%s',
+            '%Y/%m/%d %h:%m:%s',
+            '%Y%m%d',
+            '%Y-%m-%d',
+            '%Y/%m/%d',
+        ]
+        for standard in date_standards:
+            try:
+                return datetime.strptime(string, standard)
+            except:
+                continue
+
+    def get_image_dates(self):
+        self.date_processed: datetime = self.now
+        self.date_created: datetime = self.now
+
+        if self.name:
+            parts = self.name.split('_')
+            for part in parts:
+                date = self.attempt_date_standards(part)
+                if date:
+                    self.date_created = date
+
     @delete_source_files
     @wrap_on_database_editing
     def mosaic_images(self, images_for_composition: list, compose_as_single_image: bool) -> str:
@@ -174,6 +202,8 @@ class Image(BaseDatabasePath):
             return self.full_path
 
         aprint(f'Criando Mosaico em {self.path}')
+        if self.path == 'IN_MEMORY' and len(self.name) > 20:
+            self.name = self.name.replace('_', '')[-20:]
         MosaicToNewRaster(
             input_rasters=list_of_images_paths,
             output_location=self.path,
@@ -234,7 +264,7 @@ class Image(BaseDatabasePath):
 
         return self.full_path
 
-    def copy_image(self, pixel_type: str = '', nodata_value: str = '', background_value: float = None, destination: str or Database = None, delete_source: bool = False, output_name: str = '') -> str:
+    def copy_image(self, pixel_type: str = '', nodata_value: str = '', background_value: float = None, destination: str or Database = None, delete_source: bool = False, output_name: str = '', format: str = 'GRID') -> str:
         """Creates a copy of the current image
             Args:
                 destination (str, optional): path to the folder to receive the raster. Defaults to 'IN_MEMORY'.
@@ -245,21 +275,29 @@ class Image(BaseDatabasePath):
         """
         if not destination:
             destination = self.temp_db
-        elif not isinstance(destination, Database):
-            destination = Database(path=destination)
+        
+        if isinstance(destination, Database):
+            destination = destination.full_path
+        else:
+            if not Exists(destination):
+                os.makedirs(destination)
+            format = 'TIFF'
+            output_name += '.tif'
 
         if not output_name:
-            output_name = f'{self._copy_prefix}{self.name}'
+            output = os.path.join(destination, f'{self._copy_prefix}{self.name}')
+        else:
+            output = os.path.join(destination, output_name)
 
-        if Exists(os.path.join(destination.full_path, output_name)):
-            return os.path.join(destination.full_path, output_name)
+        if Exists(output):
+            return output
 
-        destination.start_editing()
+        # destination.start_editing()
 
-        aprint(f'Criando cópia de {self.full_path}')
+        aprint(f'Criando cópia de {self.full_path} para:\n{output}')
         CopyRaster(
             in_raster=self.full_path,
-            out_rasterdataset=output_name,
+            out_rasterdataset=output,
             config_keyword='',
             background_value=background_value,
             nodata_value=nodata_value,
@@ -268,13 +306,13 @@ class Image(BaseDatabasePath):
             pixel_type=pixel_type,
             scale_pixel_value="NONE",
             RGB_to_Colormap="NONE",
-            format="GRID",
+            format=format,
             transform="NONE",
             process_as_multidimensional="CURRENT_SLICE",
             build_multidimensional_transpose="NO_TRANSPOSE"
         )
-        destination.close_editing()
-        return os.path.join(destination.full_path, output_name)
+        # destination.close_editing()
+        return output
 
     def get_image_nodata_area(self, output_path: str or Database = None):
         # Creates a black and white copy
@@ -283,7 +321,7 @@ class Image(BaseDatabasePath):
 
     def classify(self, classifier: BaseImageClassifier, output_path: Database, arguments: str = None, processor_type: str = 'CPU', n_cores: int = 1) -> Feature:
         aprint(f'Classificando a imagem {self.full_path}')
-        classified_raster_full_path = os.path.join(self.temp_db.full_path, f'{self._classification_prefix}{self.name}')
+        classified_raster_full_path = os.path.join(self.temp_db.full_path, f'{self._classification_prefix}{self.name.split(".")[0]}')
 
         if not arguments:
             arguments="padding 70;batch_size 2;predict_background True;tile_size 256"

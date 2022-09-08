@@ -18,7 +18,7 @@ class MessageLogging:
             filemode='w',
             format='%(asctime)s - %(levelname)s - %(message)s',
             datefmt='%d-%b-%y %H:%M:%S',
-            level=logging.DEBUG
+            level=logging.INFO
         )
 
     def info(self, message: str, display_message: bool):

@@ -20,9 +20,9 @@ class ClassAttribute:
         return self.label
 
 class BaseImageClassifier(BasePath):
-    ml_model_extension = '.dlpk'
-    ml_model_name = ''
-    class_field = 'CLASSE'
+    ml_model_extension: str = '.dlpk'
+    ml_model_name: str = ''
+    class_field: str = 'CLASS'
 
     class Classes(ExtendedEnum):
         pass
@@ -37,8 +37,22 @@ class BaseImageClassifier(BasePath):
         return [id for id in self.Classes]
 
 class Sentinel2ImageClassifier(BaseImageClassifier):
-    ml_model_name = 'sentinel_n2'
-    class_field = 'CLASSE'
+    ml_model_name: str = 'sentinel_n2'
+
+    class Classes(ExtendedEnum):
+        AREA_ANTROPICA = ClassAttribute(60, "Área Antrópicas Não Agrícolas")
+        AREA_CAMPESTRE = ClassAttribute(10, "Campestres")
+        CULTURA_PERENE = ClassAttribute(20, "Cultura Permanente")
+        CULTURA_TEMPORARIA = ClassAttribute(30, "Cultura Temporária")
+        AREA_FLORESTAL = ClassAttribute(40, "Florestal")
+        MASSA_DAGUA = ClassAttribute(50, "Massa D’água")
+        OTHER = ClassAttribute(0, "Outros")
+
+    def __init__(self):
+        super().__init__(path=self.get_ml_model(target=self.ml_model_name))
+
+class CbersImageClassifier(BaseImageClassifier):
+    ml_model_name: str = 'cbers_n2'
 
     class Classes(ExtendedEnum):
         AREA_ANTROPICA = ClassAttribute(60, "Área Antrópicas Não Agrícolas")

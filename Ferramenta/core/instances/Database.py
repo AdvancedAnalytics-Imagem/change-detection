@@ -22,9 +22,6 @@ class SessionManager(BasePath):
     is_editing: bool = False
     _previous_workspace: str = None
     _current_session: Editor = None
-    
-    def __init__(self, *args, **kwargs):
-        super(SessionManager, self).__init__(*args, **kwargs)
 
     @property
     def is_gdb(self) -> bool:
@@ -135,7 +132,7 @@ class Database(SessionManager):
 
         if not Exists(self.full_path):
             if self.name.endswith('.sde'):
-                raise UnexistingSDEConnectionError(sde=self.full_path, error=e)
+                raise UnexistingSDEConnectionError(sde=self.full_path)
             try:
                 if create:
                     CreateFileGDB_management(path, self.name)
