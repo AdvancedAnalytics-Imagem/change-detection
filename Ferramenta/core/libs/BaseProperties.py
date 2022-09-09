@@ -49,12 +49,16 @@ class BaseProperties(BasePath):
 
     @property
     def n_cores(self) -> int:
-        return int(os.environ.get('N_CORES', os.cpu_count()))
+        n_cores = int(os.environ.get('N_CORES', 0))
+        if not n_cores:
+            n_cores = os.cpu_count()
+        return n_cores
 
     def delete_temporary_content(self) -> None:
         if self.delete_temp_files:
             if Exists(self.temp_dir):
                 try:
+                    aprint(f'Removendo arquivos temporários de processamento:\n{self.temp_dir}')
                     Delete(self.temp_dir)
                 except Exception as e:
                     DeletionError(path=self.temp_dir)

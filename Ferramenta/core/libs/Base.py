@@ -53,8 +53,8 @@ def prevent_server_error(wrapped_function):
             try:
                 return wrapped_function(*args, **kwargs)
             except Exception as e:
-                if not isinstance(e, SetinelServerError):
-                    raise(e)
+                # if not isinstance(e, SetinelServerError):
+                #     raise(e)
                 if failed_attempts > MaxFailuresError.max_failures:
                     raise MaxFailuresError(wrapped_function.__name__, attempts=failed_attempts)
                 aprint(f'Sentinel Server error:\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds}', level=LogLevels.WARNING)

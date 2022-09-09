@@ -24,6 +24,7 @@ def load_arcgis_variables(variables_obj: Configs) -> Configs:
         variables_obj.arcgis_execution = True
     else:
         variables_obj.debug = True
+        variables_obj.arcgis_execution = False
 
     if variables_obj.arcgis_execution:
         #* Imagem atual
@@ -86,8 +87,7 @@ class ClassifyAndDetectChanges:
         #* Stating Sensor Service Adapter
         image_acquisition_adapter = ImageAcquisition(
             service=self.variables.sensor, # TODO Check sensor type/string
-            credentials=self.variables.sentinel_api_auth,
-            downloads_folder=self.variables.download_storage
+            credentials=self.variables.sentinel_api_auth
         )
 
         if VARIABLES.current_image:
@@ -150,8 +150,6 @@ if __name__ == '__main__':
         message=f'''
             \n1. Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
             \n2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}
-            \n3. Arquivos baixados serão salvos em: {BASE_CONFIGS.download_storage}
-            \n4. Imagens finais serão salvas em: {BASE_CONFIGS.image_storage}
         '''
     )
 

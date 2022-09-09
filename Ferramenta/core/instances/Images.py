@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/python
 import os
+import urllib
+from concurrent import futures
+from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import date, datetime
 from xml.etree import ElementTree as ET
 
-from arcpy import EnvManager, Exists
+from arcpy import (CreatePansharpenedRasterDataset_management, EnvManager,
+                   Exists)
 from arcpy.ia import ClassifyPixelsUsingDeepLearning
 from arcpy.management import (CompositeBands, CopyRaster, Delete,
                               MosaicToNewRaster)
@@ -15,8 +19,8 @@ from core.instances.Database import Database, wrap_on_database_editing
 from core.instances.MosaicDataset import MosaicDataset
 from core.libs.Base import (delete_source_files, load_path_and_name,
                             prevent_server_error)
-from core.libs.BaseProperties import BaseProperties
 from core.libs.BaseDBPath import BaseDBPath
+from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import BaseImageClassifier
 from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
                          read_geojson)
@@ -25,7 +29,7 @@ from sentinelsat.exceptions import ServerError as SetinelServerError
 from .Feature import Feature
 
 
-class BaseSateliteImage(BaseProperties):
+class BaseSateliteImage(BaseDBPath):
     title: str = None
     datetime: datetime = None
     date: date = None
@@ -33,6 +37,9 @@ class BaseSateliteImage(BaseProperties):
     properties: dict = None
     uuid: str = ''
     cloudcoverpercentage: float = 1.0
+    
+    def get(self, property: str):
+        return self.properties.get(property)
 
     @property
     def nodata_pixel_percentage(self, *args, **kwargs) -> float:
@@ -55,9 +62,78 @@ class BaseSateliteImage(BaseProperties):
         pass
 
 
-class SentinelImage(BaseSateliteImage):
-    nodata_pixel_percentage_str: str = ''
+class CbersImage(BaseSateliteImage):
+    def __init__(self, *args, **kwargs):
+        self.__dict__.update(kwargs)
+        self.nodata_pixel_percentage_str = ''
+        self._split_title_data()
 
+    def _split_title_data(self):
+        self.tileid = f'{self.col}_{self.row}'
+        self.datetime = datetime.strptime(self.datetime, format('%Y-%m-%dT%H:%M:%S'))
+        self.date = self.datetime.date()
+    
+    def download_image(self, image_database: Database, output_name: str = '', delete_temp_files: bool = False) -> None:
+        self.path = image_database.full_path
+        self.name = f'{output_name}_{self.format_date_as_str(current_date=self.date, return_format="%Y%m%d")}'
+
+        download_folder = os.path.join(self.download_storage, self.tileid)
+        if not Exists(download_folder):
+            os.makedirs(download_folder)
+
+        if not self.exists:
+            files = {
+                'pan_img': os.path.join(download_folder, f"p_{self.tileid}.tif"),
+                'red_img': os.path.join(download_folder, f"r_{self.tileid}.tif"),
+                'green_img': os.path.join(download_folder, f"g_{self.tileid}.tif"),
+                'blue_img': os.path.join(download_folder, f"b_{self.tileid}.tif"),
+                'nir_img': os.path.join(download_folder, f"n_{self.tileid}.tif")
+            }
+            self._download_worker(url=self.pan_url, filepath=files.get('pan_img'))
+            self._download_worker(url=self.red_url, filepath=files.get('red_img'))
+            self._download_worker(url=self.green_url, filepath=files.get('green_img'))
+            self._download_worker(url=self.blue_url, filepath=files.get('blue_img'))
+            self._download_worker(url=self.nir_url, filepath=files.get('nir_img'))
+
+            self._compose_image(files=files, download_folder=download_folder)
+
+        self._erase_image_bands(download_folder)
+
+
+    def _compose_image(self, files: {}, download_folder: str) -> None:
+        composed_img = f"{download_folder}\\{self.tileid}_composed.tif"
+        if not Exists(composed_img):
+            filepaths = [
+                files.get('nir_img'),
+                files.get('red_img'),
+                files.get('green_img'),
+                files.get('blue_img')
+            ]
+            CompositeBands(';'.join(filepaths), composed_img)
+        self._pansharp_image(composed_img=composed_img, pan_img=files.get('pan_img'))
+
+    @wrap_on_database_editing
+    def _pansharp_image(self, composed_img: str,  pan_img: str) -> None:
+        CreatePansharpenedRasterDataset_management(
+            composed_img, '1', '2', '3', '4', self.full_path, pan_img, 'Gram-Schmidt'
+        )
+        Delete(composed_img)
+    
+    @prevent_server_error
+    def _download_worker(self, url: str, filepath: str) -> None:
+        if not Exists(filepath):
+            urllib.request.urlretrieve(url, filepath)
+
+    def _erase_image_bands(self, folder: str = '') -> None:
+        for prefix in ['p_', 'r_', 'g_', 'b_', 'n_']:
+            filepath = os.path.join(folder, f"{prefix}{id}.tif")
+            if Exists(filepath):
+                try:
+                    Delete(filepath)
+                except:
+                    continue
+
+class SentinelImage(BaseSateliteImage):
     def __init__(self, api: any, *args, **kwargs):
         self.api = api
         self.__dict__.update(kwargs)
@@ -69,9 +145,6 @@ class SentinelImage(BaseSateliteImage):
         self.tileid = title_parts[5][1:]
         self.datetime = datetime.strptime(title_parts[6], format('%Y%m%dT%H%M%S'))
         self.date = self.datetime.date()
-
-    def get(self, property: str):
-        return self.properties.get(property)
 
     # ---- Funções para buscar informações do nodata_pixel_percentage ----
     @property

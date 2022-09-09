@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/python
+import concurrent.futures
 from datetime import date, datetime, timedelta
 from enum import Enum, unique
 
@@ -9,29 +10,30 @@ from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.libs.BaseProperties import BaseProperties
-from core.services.SateliteImagery.ImageryServices import Cbers, Sentinel2, BaseImageAcquisitionService
+from core.services.SateliteImagery.ImageryServices import (
+    BaseImageAcquisitionService, Cbers, Sentinel2)
 
 
 class ImageAcquisition(BaseProperties):
     current_image: Image
     historic_image: Image
-    _date_gap: int = 30
 
     @unique
     class Services(Enum):
         SENTINEL2 = Sentinel2
         CBERS = Cbers
 
-    def __init__(self, service: Services, credentials: list = [], downloads_folder: str = None) -> None:        
+    def __init__(self, service: Services, credentials: list = []) -> None:        
         self.intersecting_tiles = []
-        self.service = self.Services[service].value(downloads_folder=downloads_folder)
+        self.service = self.Services[service].value()
+
         if credentials:
             self.service.authenticate_api(credentials=credentials)
 
     def set_downloaded_images_path(self, *args, **kwargs) -> None:
         self.service.set_downloaded_images_path(*args, **kwargs)
 
-    def get_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True):
+    def get_historic_and_current_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True):
         """Busca as imagens históricas e atuais, baixa e cria um mosaico dos diferentes tiles
             Args:
                 area_of_interest (Feature): _description_
@@ -43,9 +45,8 @@ class ImageAcquisition(BaseProperties):
         #* Current Image acquisition
         current_image_name = f'Current_Image_{self.today_str}'
 
-        self.current_image = self.get_image(
+        self.current_image = self.get_composed_images_for_aoi(
             max_date=self.now,
-            days_period=self._date_gap,
             area_of_interest=area_of_interest,
             results_output_location=results_output_location,
             max_cloud_coverage=max_cloud_coverage,
@@ -55,11 +56,10 @@ class ImageAcquisition(BaseProperties):
 
         #* Historic Image acquisition
         historic_image_name = f'Historic_Image_{self.today_str}'
-        min_search_date = self.current_image.date_created - timedelta(days=self._date_gap)
+        min_search_date = self.current_image.date_created - timedelta(days=self.service._days_gap)
         
-        self.historic_image = self.get_image(
+        self.historic_image = self.get_composed_images_for_aoi(
             max_date=min_search_date,
-            days_period=self._date_gap,
             area_of_interest=area_of_interest,
             results_output_location=results_output_location,
             max_cloud_coverage=max_cloud_coverage,
@@ -67,7 +67,7 @@ class ImageAcquisition(BaseProperties):
             output_img_name=historic_image_name
         )
 
-    def get_image(self, max_date: datetime, days_period: int, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True, output_img_name: str = ''):
+    def get_composed_images_for_aoi(self, max_date: datetime, area_of_interest: Feature, days_period: int = None, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True, output_img_name: str = ''):
         if not results_output_location:
             results_output_location = self.temp_db
 
@@ -79,7 +79,6 @@ class ImageAcquisition(BaseProperties):
         self.progress_tracker.init_tracking(total=len(self.intersecting_tiles), name='Busca por Imagens')
 
         #* Image acquisition
-        images = {}
         if not output_img_name:
             output_img_name = f'Img{self.today_str}'
 
@@ -95,8 +94,17 @@ class ImageAcquisition(BaseProperties):
             days_period=days_period
         )
 
+        images = {}
+        # executor = concurrent.futures.ProcessPoolExecutor(max_workers=self.n_cores)
+        
         for tile in self.intersecting_tiles:
-            tile_images = self.service.get_image(tile_name=tile, area_of_interest=area_of_interest)
+        #     executor.submit(self.service.get_best_available_images_for_tile, tile, area_of_interest)
+
+        # for tile_images in concurrent.futures.as_completed(executor):
+        #     for tile_image in tile_images:
+        #         images[tile_image.datetime] = [*images.get(tile_image.datetime,[]), tile_image]
+
+            tile_images = self.service.get_best_available_images_for_tile(tile_name=tile, area_of_interest=area_of_interest)
             for tile_image in tile_images:
                 images[tile_image.datetime] = [*images.get(tile_image.datetime,[]), tile_image]
             self.progress_tracker.report_progress(add_progress=True)

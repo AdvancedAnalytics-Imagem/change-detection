@@ -24,6 +24,7 @@ def load_arcgis_variables(variables_obj: Configs) -> Configs:
         variables_obj.arcgis_execution = True
     else:
         variables_obj.debug = True
+        variables_obj.arcgis_execution = False
 
     if variables_obj.arcgis_execution:
         #* Classificação atual

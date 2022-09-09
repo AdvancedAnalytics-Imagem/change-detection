@@ -12,7 +12,7 @@ from arcpy import (CopyFeatures_management, Describe, Exists,
                    Project_management, RepairGeometry_management,
                    SelectLayerByAttribute_management,
                    SelectLayerByLocation_management, SpatialReference,
-                   TruncateTable_management)
+                   TruncateTable_management, MinimumBoundingGeometry_management)
 from arcpy import env as arcpy_env
 from arcpy.analysis import Intersect
 from arcpy.cartography import SimplifyLine, SimplifyPolygon
@@ -181,6 +181,10 @@ class Feature(BaseDBPath, CursorManager):
 
         return geojson
 
+    def bounding_box(self) -> list:
+        for coordinate in self.iterate_feature(fields=['SHAPE@']):
+            return [coordinate[0].extent.XMin, coordinate[0].extent.YMin, coordinate[0].extent.XMax, coordinate[0].extent.YMax]
+
     def select_by_attributes(self, where_clause: str) -> dict:
         return SelectLayerByAttribute_management(in_layer_or_view=self.full_path, where_clause=where_clause)
 
@@ -217,7 +221,7 @@ class Feature(BaseDBPath, CursorManager):
         feature_name = self.get_unique_name(path=self.temp_db, name=os.path.basename(self.name))
         return CopyFeatures_management(selected_features, os.path.join(self.temp_db.full_path, feature_name))[0]
 
-    def format_feature_field_structure(self, data: list, fields: list = [], format: str = tuple):
+    def format_feature_field_structure(self, data: list, fields: list = [], format: str = tuple, field_map: dict = {}):
         """Formats data according to feature object
             Args:
                 data (list): Feature
@@ -227,7 +231,8 @@ class Feature(BaseDBPath, CursorManager):
         """
         if format == dict:
             if not fields: fields = self.field_names
-            return {field:data[index] for index, field in enumerate(fields)}
+            return {field_map.get(field, field):data[index] for index, field in enumerate(fields)}
+
         if format == list:
             return list(data)
         return data
@@ -252,7 +257,7 @@ class Feature(BaseDBPath, CursorManager):
             
         return field_names
 
-    def iterate_feature(self, fields: list = ['*'], where_clause: str = None, sql_clause: tuple = (None,None), format: str = 'tuple'):
+    def iterate_feature(self, fields: list = ['*'], where_clause: str = None, sql_clause: tuple = (None,None), format: str = 'tuple', lower_case_fields: bool = False, field_map: dict = {}):
         """Iterates a feature and returns lines as they are read, according to field structure
             Args:
                 fields (list, optional): Defaults to ['*'].
@@ -264,9 +269,11 @@ class Feature(BaseDBPath, CursorManager):
         """
         if fields == ['*']:
             fields = self.get_field_names()
+            if lower_case_fields:
+                fields = list(map(lambda x: x.lower(), fields))
         with self.search_cursor(fields=fields, sql_clause=sql_clause, where_clause=where_clause) as selected_features:
             for selected_feature in selected_features:
-                yield self.format_feature_field_structure(data=selected_feature, fields=fields, format=format)
+                yield self.format_feature_field_structure(data=selected_feature, fields=fields, format=format, field_map=field_map)
 
     def serialize_feature_selection(self, fields: list = ['*'], where_clause: str = '1=1', sql_clause: tuple = (None,None), top_rows: int = None, oid_in: list = None) -> list:
         """Return the rows as a list
@@ -340,10 +347,11 @@ class Feature(BaseDBPath, CursorManager):
                 dict: Fields that exist on current feature
         """
         all_fields = self.get_field_names(get_shape=False)
+        all_fields = list(map(lambda x: x.lower(), all_fields))
         field_names = list(fields.keys())
 
         for field_name in field_names:
-            if field_name in all_fields:
+            if field_name.lower() in all_fields:
                 continue
             success = self.add_field(field_name=field_name, field_value=fields.get(field_name))
             if not success:
@@ -366,11 +374,12 @@ class Feature(BaseDBPath, CursorManager):
             aprint(e)
             return False
 
-    def append_dataset(self, origin, where_clause: str = None, extra_constant_values: dict = {}) -> list:
+    def append_dataset(self, origin, where_clause: str = None, extra_constant_values: dict = {}, field_map: dict = {}) -> list:
         if extra_constant_values:
             extra_constant_values = self.look_for_missing_fields(extra_constant_values)
 
         fields = list(self.get_field_names())
+        fields = list(map(lambda x: x.lower(), fields))
         
         total_records = origin.row_count()
         
@@ -379,10 +388,10 @@ class Feature(BaseDBPath, CursorManager):
         if not self.batch_size: self.batch_size = total_records
 
         self.progress_tracker.init_tracking(total=total_records, name='Append Data')
-        for row_data in origin.iterate_feature(where_clause=where_clause, format=dict):
+        for row_data in origin.iterate_feature(where_clause=where_clause, format=dict, lower_case_fields=True, field_map=field_map):
             reordered_data = self.map_data_to_field_structure(data={**row_data, **extra_constant_values}, field_names=fields)
             self.insert_row(data=reordered_data, fields=fields)
-            
+        
         self.insert_row(data=reordered_data, fields=fields, _remaining_records=True)
 
     @retry_failed_attempts
@@ -403,7 +412,7 @@ class Feature(BaseDBPath, CursorManager):
                         iCursor.insertRow(row_data)
                         self.progress_tracker.report_progress(add_progress=True)
                     except Exception as e:
-                        DatabaseInsertionError(error=e, table=self.full_path, data=row_data)
+                        # DatabaseInsertionError(error=e, table=self.full_path, data=row_data)
                         failed_ids.append(row_data)
             del iCursor
             self._current_batch = []
@@ -479,4 +488,4 @@ class Feature(BaseDBPath, CursorManager):
 
     @staticmethod
     def map_data_to_field_structure(data: dict, field_names: any = None) -> list:
-        return [data.get(field, None) for field in field_names]
+        return [data.get(field.lower(), None) for field in field_names]

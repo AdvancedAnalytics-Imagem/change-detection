@@ -23,6 +23,7 @@ def load_arcgis_variables(variables_obj):
         variables_obj.arcgis_execution = True
     else:
         variables_obj.debug = True
+        variables_obj.arcgis_execution = False
 
     if variables_obj.arcgis_execution:
         target_area = GetParameterAsText(0)
@@ -64,7 +65,7 @@ def load_arcgis_variables(variables_obj):
 
         download_storage = GetParameterAsText(9)
         if download_storage:
-            os.environ['DOWNLOADS_DIR'] = download_storage
+            os.environ['DOWNLOAD_STORAGE'] = download_storage
 
         classification_processor = GetParameterAsText(10)
         if classification_processor and variables_obj.classification_processor != classification_processor:
@@ -78,7 +79,6 @@ def load_arcgis_variables(variables_obj):
 
         n_cores = GetParameterAsText(12)
         if n_cores:
-            variables_obj.n_cores = n_cores
             os.environ['N_CORES'] = variables_obj.n_cores
 
         delete_temp_files = GetParameter(13)
@@ -91,7 +91,6 @@ def load_arcgis_variables(variables_obj):
             
     return variables_obj.init_base_variables()
 
-
 VARIABLES = load_arcgis_variables(variables_obj=Configs())
 BASE_CONFIGS = BaseProperties()
 
@@ -99,10 +98,9 @@ def get_images():
     aprint(message='Iniciando Aquisição de Imagens', progress=True)
     images = ImageAcquisition(
         service=VARIABLES.sensor,
-        credentials=VARIABLES.sentinel_api_auth,
-        downloads_folder=VARIABLES.download_storage
+        credentials=VARIABLES.credentials,
     )
-    images.get_images(
+    images.get_historic_and_current_images(
         area_of_interest=VARIABLES.target_area,
         results_output_location=BASE_CONFIGS.temp_db,
         max_cloud_coverage=VARIABLES.max_cloud_coverage,
@@ -183,32 +181,45 @@ def main():
     change_detection = detect_changes(current=current_classification, historic=historic_classification)
 
     tile_names = ', '.join(images.service.tile_names)
-    VARIABLES.classificacao_atual.append_dataset(origin=current_classification, extra_constant_values={
-        'DATA':images.current_image.date_created,
-        'DataImagem':images.current_image.date_created,
-        'DATA_PROC':images.current_image.date_processed,
-        'DataProcessamento':images.current_image.date_processed,
-        'SENSOR':VARIABLES.sensor,
-        'TILES':tile_names
-    })
-    VARIABLES.classificacao_historica.append_dataset(origin=historic_classification, extra_constant_values={
-        'DATA':images.historic_image.date_created,
-        'DataImagem':images.historic_image.date_created,
-        'DATA_PROC':images.historic_image.date_created,
-        'DataProcessamento':images.historic_image.date_created,
-        'SENSOR':VARIABLES.sensor,
-        'TILES':tile_names
-    })
-    VARIABLES.deteccao_de_mudancas.append_dataset(origin=change_detection, extra_constant_values={
-        'DATA_A':images.current_image.date_created,
-        'DataImgAtual':images.current_image.date_created,
-        'DATA_H':images.historic_image.date_created,
-        'DataImgHist':images.historic_image.date_created,
-        'DATA_PROC':images.current_image.date_processed,
-        'DataProcessamento':images.current_image.date_processed,
-        'SENSOR':VARIABLES.sensor,
-        'TILES':tile_names
-    })
+    VARIABLES.deteccao_de_mudancas.append_dataset(
+        origin=change_detection,
+        extra_constant_values={
+            'data_a':images.current_image.date_created,
+            'dataimgatual':images.current_image.date_created,
+            'data_h':images.historic_image.date_created,
+            'dataimghist':images.historic_image.date_created,
+            'data_proc':images.current_image.date_processed,
+            'dataprocessamento':images.current_image.date_processed,
+            'sensor':VARIABLES.sensor,
+            'tiles':tile_names
+        },
+        field_map={
+            'class':'class_h',
+            'class_1':'class_a'
+        }
+    )
+    VARIABLES.classificacao_atual.append_dataset(
+        origin=current_classification,
+        extra_constant_values={
+            'data':images.current_image.date_created,
+            'dataimagem':images.current_image.date_created,
+            'data_proc':images.current_image.date_processed,
+            'dataprocessamento':images.current_image.date_processed,
+            'sensor':VARIABLES.sensor,
+            'tiles':tile_names
+        }
+    )
+    VARIABLES.classificacao_historica.append_dataset(
+        origin=historic_classification,
+        extra_constant_values={
+            'data':images.historic_image.date_created,
+            'dataimagem':images.historic_image.date_created,
+            'data_proc':images.historic_image.date_created,
+            'dataprocessamento':images.historic_image.date_created,
+            'sensor':VARIABLES.sensor,
+            'tiles':tile_names
+        }
+    )
 
 if __name__ == '__main__':
     aprint(
@@ -216,6 +227,10 @@ if __name__ == '__main__':
             \n1. Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
             \n2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}
             \n3. Arquivos baixados serão salvos em: {BASE_CONFIGS.download_storage}
-            \n4. Imagens finais serão salvas em: {BASE_CONFIGS.image_storage}'''
+            \n4. Imagens finais serão salvas em: {BASE_CONFIGS.image_storage}
+            \nIniciando Execução...
+            \n_ _________________ _\n'''
     )
     main()
+
+    BASE_CONFIGS.delete_temporary_content()

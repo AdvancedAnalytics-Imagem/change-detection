@@ -15,14 +15,6 @@ from core.libs.ErrorManager import VariablesLoadingError
 
 
 class Configs(BasePath):
-    arcgis_execution: bool = False
-    env_configs: dict = {}
-    temp_dir: str = None
-    download_storage: str = None
-    temp_db: str = None
-    delete_temp_files_while_processing: bool = False
-    delete_temp_files: bool = False
-
     def __init__(self) -> None:
         self.load_all_variables()
         self.init_base_variables()
@@ -52,6 +44,9 @@ class Configs(BasePath):
             if not isinstance(self.output_mosaic_dataset_historic, MosaicDataset):
                 self.output_mosaic_dataset_historic = MosaicDataset(path=self.output_mosaic_dataset_historic)
 
+        if hasattr(self, 'download_storage') and self.download_storage:
+            os.environ['DOWNLOAD_STORAGE'] = self.download_storage
+
         if hasattr(self, 'image_storage') and self.image_storage:
             os.environ['IMAGE_STORAGE'] = self.image_storage
         
@@ -60,6 +55,12 @@ class Configs(BasePath):
         
         if hasattr(self, 'temp_db') and self.temp_db:
             os.environ['TEMP_DB'] = self.temp_db
+        
+        if hasattr(self, 'delete_temp_files') and self.delete_temp_files:
+            os.environ['DELETE_TEMP_FILES'] = 'True'
+        
+        if hasattr(self, 'delete_temp_files_while_processing') and self.delete_temp_files_while_processing:
+            os.environ['DELETE_TEMP_FILES_WHILE_PROCESSING'] = 'True'
         
         return self
         

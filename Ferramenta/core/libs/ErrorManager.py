@@ -138,3 +138,10 @@ class NoBaseTilesLayerFound(Error):
     def __init__(self, message = ''):
         self.message = f'Não foi possível encontrar a layer de tiles.\n{message}'
         super().__init__(self.message)
+
+class NoCbersCredentials(Error):
+
+    def __init__(self, message = ''):
+        self.message = f'Não foi possível encontrar credenciais do CBERS.\n{message}'
+        super().__init__(self.message)
+        

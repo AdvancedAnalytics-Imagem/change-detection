@@ -22,6 +22,7 @@ def load_arcgis_variables(variables_obj: Configs) -> Configs:
         variables_obj.debug = False
         variables_obj.arcgis_execution = True
     else:
+        variables_obj.arcgis_execution = False
         variables_obj.debug = True
 
     if variables_obj.arcgis_execution:
@@ -64,7 +65,7 @@ def load_arcgis_variables(variables_obj: Configs) -> Configs:
         #* Pasta para downloads (Opcional - core/dowloads)
         download_storage = GetParameterAsText(7)
         if download_storage:
-            variables_obj.download_storage = download_storage
+            os.environ['DOWNLOAD_STORAGE'] = download_storage
 
         #* Deletar arquivos temporarios (Opcional - False)
         delete_temp_files = GetParameter(8)
@@ -88,10 +89,9 @@ class DownloadSateliteImages:
         image_acquisition_adapter = ImageAcquisition(
             service=self.variables.sensor, # TODO Check sensor type/string
             credentials=self.variables.sentinel_api_auth,
-            downloads_folder=self.variables.download_storage
         )
         #* Pulling single image
-        image = image_acquisition_adapter.get_image(
+        image = image_acquisition_adapter.get_composed_images_for_aoi(
             area_of_interest=self.variables.target_area,
             results_output_location=self.configs.temp_db,
             max_cloud_coverage=self.variables.max_cloud_coverage,
