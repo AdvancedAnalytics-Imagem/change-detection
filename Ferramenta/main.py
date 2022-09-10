@@ -79,7 +79,7 @@ def load_arcgis_variables(variables_obj):
 
         n_cores = GetParameterAsText(12)
         if n_cores:
-            os.environ['N_CORES'] = variables_obj.n_cores
+            os.environ['N_CORES'] = str(variables_obj.n_cores)
 
         delete_temp_files = GetParameter(13)
         if delete_temp_files:

@@ -126,6 +126,7 @@ class Feature(BaseDBPath, CursorManager):
             self._fields = self.get_field_names()
         return self._fields
     
+    @property
     def repair_grometry(self):
         RepairGeometry_management(self.full_path)
 
@@ -187,6 +188,10 @@ class Feature(BaseDBPath, CursorManager):
 
     def select_by_attributes(self, where_clause: str) -> dict:
         return SelectLayerByAttribute_management(in_layer_or_view=self.full_path, where_clause=where_clause)
+
+    @property
+    def delete(self):
+        Delete(self.full_path)
 
     def select_by_location(self, intersecting_feature: str, distance: int = None, overlap_type: str = 'INTERSECT') -> dict:
         """Returns and selects current feature by location, based on intersection with an intersecting feature
@@ -268,12 +273,13 @@ class Feature(BaseDBPath, CursorManager):
                 Iterator[tuple | list | dict]: row data on desired structure
         """
         if fields == ['*']:
-            fields = self.get_field_names()
+            fields = self.get_field_names(get_id=True)
             if lower_case_fields:
                 fields = list(map(lambda x: x.lower(), fields))
         with self.search_cursor(fields=fields, sql_clause=sql_clause, where_clause=where_clause) as selected_features:
             for selected_feature in selected_features:
                 yield self.format_feature_field_structure(data=selected_feature, fields=fields, format=format, field_map=field_map)
+        del selected_features, selected_feature
 
     def serialize_feature_selection(self, fields: list = ['*'], where_clause: str = '1=1', sql_clause: tuple = (None,None), top_rows: int = None, oid_in: list = None) -> list:
         """Return the rows as a list
@@ -398,11 +404,12 @@ class Feature(BaseDBPath, CursorManager):
     def insert_row(self, data: list, fields: list, _remaining_records: bool = False):
         if isinstance(data, list) and isinstance(data[0], list):
             self._current_batch.extend(data)
-        else:
+        elif not _remaining_records:
             self._current_batch.append(data)
         failed_ids = []
 
         if (self._current_batch and len(self._current_batch)%self.batch_size == 0) or _remaining_records:
+            aprint(f'>> Linhas a serem inseridas: {len(self._current_batch)}')
             with self.insert_cursor(fields) as iCursor:
                 for row_data in self._current_batch:
                     if not isinstance(row_data, list):
@@ -412,9 +419,9 @@ class Feature(BaseDBPath, CursorManager):
                         iCursor.insertRow(row_data)
                         self.progress_tracker.report_progress(add_progress=True)
                     except Exception as e:
-                        # DatabaseInsertionError(error=e, table=self.full_path, data=row_data)
                         failed_ids.append(row_data)
-            del iCursor
+
+            del iCursor, row_data
             self._current_batch = []
             self.database.close_editing()
 

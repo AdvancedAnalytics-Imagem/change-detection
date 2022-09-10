@@ -87,51 +87,77 @@ class AppendResults:
             service=self.variables.sensor, # TODO Check sensor type/string
         )
 
-        if self.variables.current_classification and self.variables.current_classification_dest:
-            tile_names = ', '.join(img_acqstn_adptr.service.get_selected_tiles_names(area_of_interest=self.variables.current_classification))
-            self.variables.current_classification_dest.append_dataset(
-                origin=self.variables.current_classification,
-                extra_constant_values={
-                    'DATA':self.variables.current_image_date,
-                    'DATA_PROC':self.variables.processing_date,
-                    'SENSOR':self.variables.sensor,
-                    'TILES':tile_names
-                }
-            )
-            aprint('Append de dados atuais concluído com sucesso')
-
-        if self.variables.historic_classification and self.variables.historic_classification_dest:
-            if not tile_names:
-                tile_names = ', '.join(img_acqstn_adptr.service.get_selected_tiles_names(area_of_interest=self.variables.historic_classification))
-
-            self.variables.historic_classification_dest.append_dataset(
-                origin=self.variables.historic_classification,
-                extra_constant_values={
-                    'DATA':self.variables.historic_image_date,
-                    'DATA_PROC':self.variables.processing_date,
-                    'SENSOR':self.variables.sensor,
-                    'TILES':tile_names
-                }
-            )
-            aprint('Append de dados histórico concluído com sucesso')
+        tile_names = ', '.join(img_acqstn_adptr.service.get_selected_tiles_names(area_of_interest=self.variables.change_detection))
 
         if self.variables.change_detection and self.variables.change_detection_dest:
-            if not tile_names:
-                tile_names = ', '.join(img_acqstn_adptr.service.get_selected_tiles_names(area_of_interest=self.variables.change_detection))
-                
-            self.variables.change_detection_dest.append_dataset(
+            self.append_change_detection(
                 origin=self.variables.change_detection,
-                extra_constant_values={
-                    'DATA_A':self.variables.current_image_date,
-                    'DATA_H':self.variables.historic_image_date,
-                    'DATA_PROC':self.variables.processing_date,
-                    'SENSOR':self.variables.sensor,
-                    'TILES':tile_names
-                }
+                destination=self.variables.change_detection_dest,
+                tile_names=tile_names
             )
-            aprint('Append de dados de classificação concluído com sucesso')
+
+        if self.variables.current_classification and self.variables.current_classification_dest:
+            self.append_current_classification(
+                origin=self.variables.current_classification,
+                destination=self.variables.current_classification_dest,
+                tile_names=tile_names
+            )
+
+        if self.variables.historic_classification and self.variables.historic_classification_dest:
+            self.append_historic_classification(
+                origin=self.variables.historic_classification,
+                destination=self.variables.historic_classification_dest,
+                tile_names=tile_names
+            )
 
         aprint('\n_ _______________________ _\nAppend de dados concluído com sucesso')
+
+
+    def append_current_classification(self, origin: Feature, destination: Feature, tile_names: str):
+        destination.append_dataset(
+            origin=origin,
+            extra_constant_values={
+                'data':self.variables.current_image_date,
+                'data_proc':self.variables.processing_date,
+                'sensor':self.variables.sensor,
+                'tiles':tile_names
+            }
+        )
+        aprint('Append de dados atuais concluído com sucesso')
+
+    def append_historic_classification(self, origin: Feature, destination: Feature, tile_names: str):
+        destination.append_dataset(
+            origin=origin,
+            extra_constant_values={
+                'data':self.variables.historic_image_date,
+                'data_proc':self.variables.processing_date,
+                'sensor':self.variables.sensor,
+                'tiles':tile_names
+            }
+        )
+        aprint('Append de dados histórico concluído com sucesso')
+
+    def append_change_detection(self, origin: Feature, destination: Feature, tile_names: str):
+        destination.append_dataset(
+            origin=origin,
+            extra_constant_values={
+                'data_a':self.variables.current_image_date,
+                'dataimgatual':self.variables.current_image_date,
+                'data_h':self.variables.historic_image_date,
+                'dataimghist':self.variables.historic_image_date,
+                'data_proc':self.variables.processing_date,
+                'dataprocessamento':self.variables.processing_date,
+                'sensor':self.variables.sensor,
+                'tiles':tile_names
+            },
+            field_map={
+                'class':'class_h',
+                'class_1':'class_a',
+                'objectid': 'id'
+            }
+        )
+        aprint('Append de dados de classificação concluído com sucesso')
+
         
 if __name__ == '__main__':
     AppendResults(variables=VARIABLES, configs=BASE_CONFIGS).append_data()
