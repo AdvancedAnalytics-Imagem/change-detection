@@ -6,13 +6,14 @@ import os
 import time
 from datetime import date, datetime
 
-from arcpy import (CopyFeatures_management, Describe, Exists,
-                   FeatureClassToFeatureClass_conversion,
+from arcpy import (Append_management, CopyFeatures_management, Describe,
+                   Exists, FeatureClassToFeatureClass_conversion,
                    FeaturesToJSON_conversion, GetCount_management, ListFields,
-                   Project_management, RepairGeometry_management,
+                   MinimumBoundingGeometry_management, Project_management,
+                   RepairGeometry_management,
                    SelectLayerByAttribute_management,
                    SelectLayerByLocation_management, SpatialReference,
-                   TruncateTable_management, MinimumBoundingGeometry_management)
+                   TruncateTable_management)
 from arcpy import env as arcpy_env
 from arcpy.analysis import Intersect
 from arcpy.cartography import SimplifyLine, SimplifyPolygon
@@ -62,14 +63,18 @@ def retry_failed_attempts(wrapped_function):
 
 class FieldManager:
     def get_field_type_by_value(self, field_value: any):
-        if isinstance(field_value, datetime) or field_value == datetime:
+        if isinstance(field_value, datetime) or field_value == datetime or str(field_value) in ['Date']:
             return FieldType._date.value
-        if isinstance(field_value, date) or field_value == date:
+        elif isinstance(field_value, date) or field_value == date:
             return FieldType._date.value
-        if isinstance(field_value, str) or field_value == str:
+        elif isinstance(field_value, str) or field_value == str or str(field_value) in ['String']:
             return FieldType._str.value
-        if isinstance(field_value, int) or field_value == int:
+        elif isinstance(field_value, int) or field_value == int or str(field_value) in ['SmallInteger', 'LongInteger', 'Integer']:
             return FieldType._short.value
+        elif isinstance(field_value, float) or field_value == float or str(field_value) in ['Float']:
+            return FieldType._float.value
+        else:
+            print(field_value)
 
     def get_structure(self, field_type: str = '', field_value: any = None) -> dict:
         """Gets field structure based on type or value
@@ -137,6 +142,17 @@ class Feature(BaseDBPath, CursorManager):
             Delete(path)
         response = FeaturesToJSON_conversion(feature, path, outputToWGS84=True)
         return response[0]
+
+    def create_geojson(self):
+        feature = self.simpplify_geometry()
+        if self.temp_db.full_path == 'IN_MEMORY':
+            temp_folder = self.load_path_variable(ROOT_DIR, f'temp_{self.today_str}')
+            temp_feature = Project_management(feature, os.path.join(temp_folder, f"temp_project_{self.name}"), SpatialReference(out_sr))
+        else:
+            temp_feature = Project_management(feature, f"temp_project_{self.name.replace('.shp','')}", SpatialReference(out_sr))
+        
+        for feature in SearchCursor(temp_feature, ['*']):
+            print(feature)
 
     @wrap_on_database_editing
     def simpplify_geometry(self, tolerance: int = 300):
@@ -262,6 +278,11 @@ class Feature(BaseDBPath, CursorManager):
             
         return field_names
 
+    def get_field_structure(self, lowercase: bool = False) -> dict:
+        if lowercase:
+            return {f.name.lower():f.type for f in ListFields(self.full_path)}
+        return {f.name:f.type for f in ListFields(self.full_path)}
+
     def iterate_feature(self, fields: list = ['*'], where_clause: str = None, sql_clause: tuple = (None,None), format: str = 'tuple', lower_case_fields: bool = False, field_map: dict = {}):
         """Iterates a feature and returns lines as they are read, according to field structure
             Args:
@@ -380,7 +401,47 @@ class Feature(BaseDBPath, CursorManager):
             aprint(e)
             return False
 
-    def append_dataset(self, origin, where_clause: str = None, extra_constant_values: dict = {}, field_map: dict = {}) -> list:
+    def _append(self, origin):
+        origin = [o.full_path for o in origin]
+        try:
+            Append_management(
+                inputs=origin,
+                target=self.full_path,
+                schema_type='NO_TEST'
+            )
+        except Exception as e:
+            print(e)
+
+    def regular_append(self, origin, where_clause: str = None, extra_constant_values: dict = {}, field_map: dict = {}):
+        if not isinstance(origin, list):
+            origin = [origin]
+        
+        if extra_constant_values:
+            for feature in origin:
+                for field in extra_constant_values:
+                    feature.calculate_field(field_name=field, field_value=extra_constant_values[field])
+
+        if field_map:
+            for feature in origin:
+                field_structure = feature.get_field_structure(lowercase=True)
+                for field in field_map:
+                    expression=f"!{field}!"
+                    code_block=""
+                    feature.calculate_field(
+                        field_name=field_map[field],
+                        field_value=field_structure.get(field),
+                        expression=expression,
+                        code_block=code_block)
+
+        self._append(origin=origin)
+
+    def append_dataset(self, *args, **kwargs) -> list:
+        if self.use_arcpy_append:
+            self.regular_append(*args, **kwargs)
+        else:
+            self.cursor_append(*args, **kwargs)
+    
+    def cursor_append(self, origin, where_clause: str = None, extra_constant_values: dict = {}, field_map: dict = {}):
         if extra_constant_values:
             extra_constant_values = self.look_for_missing_fields(extra_constant_values)
 
@@ -454,7 +515,7 @@ class Feature(BaseDBPath, CursorManager):
             for row in cursor:
                 cursor.updateRow(values)
 
-    def calculate_field(self, field_name: str, expression: str = None, code_block: str = None, field_value: any = str, expression_type: str = "PYTHON3", image_classifier: BaseImageClassifier = None):
+    def calculate_field(self, field_name: str, field_value: any = str, expression: str = None, code_block: str = None, expression_type: str = "PYTHON3", image_classifier: BaseImageClassifier = None):
         if image_classifier is not None:
             self.look_for_missing_fields(fields={image_classifier.class_field:str})
             for classified_class in image_classifier.Classes:
@@ -464,7 +525,7 @@ class Feature(BaseDBPath, CursorManager):
                     for row in cursor:
                         row[0] = classified_class.value.label
                         cursor.updateRow(row)
-        if expression:
+        elif expression:
             CalculateField(
                 in_table=self.full_path,
                 field=field_name,
@@ -473,6 +534,25 @@ class Feature(BaseDBPath, CursorManager):
                 code_block=code_block,
                 field_type=FieldManager().get_field_type_by_value(field_value=field_value)
             )
+        else:
+            field_type = FieldManager().get_field_type_by_value(field_value=field_value)
+            expression=f"func('{field_value}', '{field_type}')"
+            code_block="""def func(value, type):
+                    if type == 'DATE':
+                        return time.strftime('%Y-%m-%d %H:%M:%S')
+                    if type == 'SHORT':
+                        return int(value)
+                    return value"""
+            CalculateField(
+                in_table=self.full_path,
+                field=field_name,
+                expression=expression,
+                expression_type=expression_type,
+                code_block=code_block,
+                field_type=FieldManager().get_field_type_by_value(field_value=field_value)
+            )
+
+
     def intersects(self, intersecting_feature: str):
         if not isinstance(intersecting_feature, str) and hasattr(intersecting_feature, 'full_path'):
             intersecting_feature = intersecting_feature.full_path
