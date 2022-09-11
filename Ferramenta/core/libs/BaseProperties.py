@@ -53,6 +53,10 @@ class BaseProperties(BasePath):
         if not n_cores:
             n_cores = os.cpu_count()
         return n_cores
+        
+    @property
+    def use_arcpy_append(self) -> bool:
+        return os.environ.get('USE_ARCPY_APPEND', 'True') == 'True'
 
     def delete_temporary_content(self) -> None:
         if self.delete_temp_files:

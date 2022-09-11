@@ -17,7 +17,6 @@ from core.libs.ErrorManager import VariablesLoadingError
 class Configs(BasePath):
     def __init__(self) -> None:
         self.load_all_variables()
-        self.init_base_variables()
 
     def init_base_variables(self):
         if hasattr(self, 'target_area') and self.target_area:
@@ -44,24 +43,32 @@ class Configs(BasePath):
             if not isinstance(self.output_mosaic_dataset_historic, MosaicDataset):
                 self.output_mosaic_dataset_historic = MosaicDataset(path=self.output_mosaic_dataset_historic)
 
-        if hasattr(self, 'download_storage') and self.download_storage:
-            os.environ['DOWNLOAD_STORAGE'] = self.download_storage
-
         if hasattr(self, 'image_storage') and self.image_storage:
-            os.environ['IMAGE_STORAGE'] = self.image_storage
+            if not os.environ.get('IMAGE_STORAGE'):
+                os.environ['IMAGE_STORAGE'] = self.image_storage
         
         if hasattr(self, 'temp_dir') and self.temp_dir:
-            os.environ['TEMP_DIR'] = self.temp_dir
-        
-        if hasattr(self, 'temp_db') and self.temp_db:
-            os.environ['TEMP_DB'] = self.temp_db
-        
+            if not os.environ.get('TEMP_DIR'):
+                os.environ['TEMP_DIR'] = self.temp_dir
+            if not os.environ.get('TEMP_DB'):
+                os.environ['TEMP_DB'] = os.path.join(temp_dir, f'{os.path.basename(self.temp_dir)}.gdb')
+
+        if hasattr(self, 'download_storage') and self.download_storage:
+            if not os.environ.get('DOWNLOAD_STORAGE'):
+                os.environ['DOWNLOAD_STORAGE'] = self.download_storage
+
         if hasattr(self, 'delete_temp_files') and self.delete_temp_files:
-            os.environ['DELETE_TEMP_FILES'] = 'True'
-        
+            if not os.environ.get('DELETE_TEMP_FILES'):
+                os.environ['DELETE_TEMP_FILES'] = 'True'
+
         if hasattr(self, 'delete_temp_files_while_processing') and self.delete_temp_files_while_processing:
-            os.environ['DELETE_TEMP_FILES_WHILE_PROCESSING'] = 'True'
-        
+            if not os.environ.get('DELETE_TEMP_FILES_WHILE_PROCESSING'):
+                os.environ['DELETE_TEMP_FILES_WHILE_PROCESSING'] = 'True'
+
+        if hasattr(self, 'use_arcpy_append') and self.use_arcpy_append:
+            if not os.environ.get('USE_ARCPY_APPEND'):
+                os.environ['USE_ARCPY_APPEND'] = 'True'
+
         return self
         
 

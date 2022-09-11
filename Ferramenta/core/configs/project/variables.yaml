@@ -31,3 +31,4 @@ n_cores: 8
 
 # Parâmetros de Execução
 debug: True
+use_arcpy_append: True

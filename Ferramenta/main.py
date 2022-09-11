@@ -42,10 +42,6 @@ def load_arcgis_variables(variables_obj):
         if classificacao_historica and variables_obj.classificacao_historica != classificacao_historica:
             variables_obj.classificacao_historica = classificacao_historica
 
-        image_storage = GetParameterAsText(4)
-        if image_storage:
-            os.environ['IMAGE_STORAGE'] = image_storage
-
         output_mosaic_dataset_current = GetParameterAsText(5)
         if output_mosaic_dataset_current and variables_obj.output_mosaic_dataset_current != output_mosaic_dataset_current:
             variables_obj.output_mosaic_dataset_current = output_mosaic_dataset_current
@@ -57,15 +53,6 @@ def load_arcgis_variables(variables_obj):
         max_cloud_coverage = GetParameter(7)
         if max_cloud_coverage and variables_obj.max_cloud_coverage != max_cloud_coverage:
             variables_obj.max_cloud_coverage = max_cloud_coverage
-        
-        temp_dir = GetParameterAsText(8)
-        if temp_dir:
-            os.environ['TEMP_DIR'] = temp_dir
-            os.environ['TEMP_DB'] = os.path.join(temp_dir, f'{os.path.basename(temp_dir)}.gdb')
-
-        download_storage = GetParameterAsText(9)
-        if download_storage:
-            os.environ['DOWNLOAD_STORAGE'] = download_storage
 
         classification_processor = GetParameterAsText(10)
         if classification_processor and variables_obj.classification_processor != classification_processor:
@@ -77,6 +64,19 @@ def load_arcgis_variables(variables_obj):
         if classification_arguments and variables_obj.classification_arguments != classification_arguments:
             variables_obj.classification_arguments = classification_arguments
 
+        image_storage = GetParameterAsText(4)
+        if image_storage:
+            os.environ['IMAGE_STORAGE'] = image_storage
+            
+        temp_dir = GetParameterAsText(8)
+        if temp_dir:
+            os.environ['TEMP_DIR'] = temp_dir
+            os.environ['TEMP_DB'] = os.path.join(temp_dir, f'{os.path.basename(temp_dir)}.gdb')
+
+        download_storage = GetParameterAsText(9)
+        if download_storage:
+            os.environ['DOWNLOAD_STORAGE'] = download_storage
+            
         n_cores = GetParameterAsText(12)
         if n_cores:
             os.environ['N_CORES'] = str(variables_obj.n_cores)
