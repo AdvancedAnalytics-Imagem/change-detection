@@ -95,15 +95,7 @@ class ImageAcquisition(BaseProperties):
         )
 
         images = {}
-        # executor = concurrent.futures.ProcessPoolExecutor(max_workers=self.n_cores)
-        
         for tile in self.intersecting_tiles:
-        #     executor.submit(self.service.get_best_available_images_for_tile, tile, area_of_interest)
-
-        # for tile_images in concurrent.futures.as_completed(executor):
-        #     for tile_image in tile_images:
-        #         images[tile_image.datetime] = [*images.get(tile_image.datetime,[]), tile_image]
-
             tile_images = self.service.get_best_available_images_for_tile(tile_name=tile, area_of_interest=area_of_interest)
             for tile_image in tile_images:
                 images[tile_image.datetime] = [*images.get(tile_image.datetime,[]), tile_image]
