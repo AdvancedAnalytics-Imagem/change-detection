@@ -57,7 +57,7 @@ def load_arcgis_variables(variables_obj: Configs) -> Configs:
             variables_obj.output_mosaic_dataset = MosaicDataset(path=output_mosaic_dataset)
 
         #* Armazenamento temporario (Opcional - IN_MEMORY)
-        temp_dir = GetParameterAsText(8)
+        temp_dir = GetParameterAsText(6)
         if temp_dir:
             os.environ['TEMP_DIR'] = temp_dir
             os.environ['TEMP_DB'] = os.path.join(temp_dir, f'{os.path.basename(temp_dir)}.gdb')
@@ -88,7 +88,7 @@ class DownloadSateliteImages:
         #* Stating Sensor Service Adapter
         image_acquisition_adapter = ImageAcquisition(
             service=self.variables.sensor, # TODO Check sensor type/string
-            credentials=self.variables.sentinel_api_auth,
+            credentials=self.variables.credentials,
         )
         #* Pulling single image
         image = image_acquisition_adapter.get_composed_images_for_aoi(
@@ -99,12 +99,15 @@ class DownloadSateliteImages:
             days_period=self.variables.days_period,
             compose_as_single_image=self.variables.compose_as_single_image # Caso negativo, os tiles não serão mosaicados em uma única imagem, isto impossibilita o append em um Mosaic Dataset
         )
-        new_image = self.add_image_to_mosaic_dataset(
-            image=image,
-            location=self.configs.image_storage,
-            mosaic_dataset=self.variables.output_mosaic_dataset
-        )
-        return new_image
+
+        if hasattr(self.variables, 'output_mosaic_dataset') and self.variables.output_mosaic_dataset:
+            new_image = self.add_image_to_mosaic_dataset(
+                image=image,
+                location=self.configs.image_storage,
+                mosaic_dataset=self.variables.output_mosaic_dataset
+            )
+            return new_image
+        return image
         
     def add_image_to_mosaic_dataset(self, image: Image, location: Database, mosaic_dataset: MosaicDataset, satelite: str = 'Sentinel2'):
         output_name = f'{satelite}_{image.date_created.strftime("%Y%m%d")}'

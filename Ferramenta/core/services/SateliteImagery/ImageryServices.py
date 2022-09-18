@@ -13,7 +13,8 @@ from core._constants import *
 from core._logs import *
 from core.instances.Database import Database
 from core.instances.Feature import Feature
-from core.instances.Images import CbersImage, Image, SentinelImage
+from core.instances.Images import (BaseSateliteImage, CbersImage, Image,
+                                   SentinelImage)
 from core.libs.Base import ProgressTracker, prevent_server_error
 from core.libs.BaseProperties import BaseProperties
 from core.libs.ErrorManager import NoBaseTilesLayerFound, NoCbersCredentials
@@ -67,6 +68,19 @@ class BaseImageAcquisitionService(BaseProperties):
 
     def get_best_available_images_for_tile(self, *args, **kwargs) -> list:
         pass
+    
+    def _get_most_recent_image(self, images: list, max_date: datetime = None, days_period: datetime = None) -> SentinelImage:
+        most_recent_image = None
+        min_date = None
+        if max_date:
+            if not days_period: days_period = self._days_gap
+            min_date = max_date - timedelta(days=days_period)
+
+        for image in images:
+            if (min_date and image.datetime < min_date) or (max_date and image.datetime >= max_date) or (most_recent_image and image.datetime <= most_recent_image.datetime):
+                continue # Image date is not between min_date and max_date or is older then the current selected image
+            most_recent_image = image
+        return most_recent_image
 
 
 class Cbers(BaseImageAcquisitionService):
@@ -172,14 +186,20 @@ class Cbers(BaseImageAcquisitionService):
         self.credentials = credentials.get('cbers_api',{})
         if not self.credentials:
             raise NoCbersCredentials()
+    
+    def _get_best_possile_images(self, list_of_images: list, max_date: datetime = None, days_period: datetime = None) -> list[BaseSateliteImage]:
+        return self._get_most_recent_image(images=list_of_images, max_date=max_date, days_period=days_period)
 
-    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, min_date: datetime = None) -> list:
+    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None) -> list:
         if not self.available_images:
-            if not self.area_of_interest:
+            if not area_of_interest:
                 raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
-            self.query_available_images(area_of_interest=area_of_interest)
+            self.query_available_images(area_of_interest=area_of_interest, max_date=max_date, days_period=days_period)
 
-        best_available_image = self.available_images.get(tile_name)
+        best_available_image = self._get_best_possile_images(
+            list_of_images=self.available_images.get(tile_name,[]),
+            max_date=max_date,
+            days_period=days_period)
 
         if not isinstance(best_available_image, list): best_available_image = [best_available_image]
         [image.download_image(
@@ -266,31 +286,31 @@ class Sentinel2(BaseImageAcquisitionService):
 
         return self.available_images
 
-    def _get_best_possile_images(self, list_of_images: list, tile_name: str, max_date: datetime = None, min_date: datetime = None) -> list:
+    def _get_best_possile_images(self, list_of_images: list, max_date: datetime = None, days_period: datetime = None) -> list:
         """Looks throught the identified images on the selected period for the current tile and isolates the best and most recent image based on a few rules
             Args:
                 list_of_images (list): List of images identified for the current tile
                 tile (str): Tile name
                 max_date: Max date for an image (Optional)
-                min_date: Min date for an image (Optional)
+                days_period: Min date for an image (Optional)
             Returns:
                 Image -> Most recent available Image instance,
         """
         filtered_list_of_images = self._filter_by_nodata_threshold(images=list_of_images, threshold=self._scene_min_coverage_threshold)
         if filtered_list_of_images:
             filtered_list_of_images = self._filter_by_cloud_coverage(images=filtered_list_of_images, threshold=self.max_cloud_coverage)
-            return self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, min_date=min_date)
+            return self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, days_period=days_period)
 
-        return self._combine_lower_coverage_tile_image(images=list_of_images, max_date=max_date, min_date=min_date)
+        return self._combine_lower_coverage_tile_image(images=list_of_images, max_date=max_date, days_period=days_period)
 
-    def _combine_lower_coverage_tile_image(self, images: list, max_date: datetime = None, min_date: datetime = None) -> list:
+    def _combine_lower_coverage_tile_image(self, images: list, max_date: datetime = None, days_period: datetime = None) -> list:
         filtered_list_of_images = self._filter_by_nodata_threshold(images=images, threshold=self._combined_scene_min_coverage_threshold)
         filtered_list_of_images = self._filter_by_cloud_coverage(images=filtered_list_of_images, threshold=self.max_cloud_coverage)
 
         if not filtered_list_of_images or len(filtered_list_of_images) < 2: return
 
-        first_image = self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, min_date=min_date)
-        second_image = self._get_most_recent_image(images=filtered_list_of_images, max_date=first_image.datetime, min_date=min_date)
+        first_image = self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, days_period=days_period)
+        second_image = self._get_most_recent_image(images=filtered_list_of_images, max_date=first_image.datetime, days_period=days_period)
         return [first_image, second_image]
 
     @staticmethod
@@ -301,24 +321,19 @@ class Sentinel2(BaseImageAcquisitionService):
     def _filter_by_nodata_threshold(images: list, threshold: int) -> list:
         if not images: return []
         return [image for image in images if image.nodata_pixel_percentage < threshold]
-    
-    @staticmethod
-    def _get_most_recent_image(images: list, max_date: datetime = None, min_date: datetime = None) -> SentinelImage:
-        most_recent_image = None
-        for image in images:
-            if (min_date and image.datetime < min_date) or (max_date and image.datetime >= max_date) or (most_recent_image and image.datetime <= most_recent_image.datetime):
-                continue # Image date is not between min_date and max_date or is older then the current selected image
-            most_recent_image = image
-        return most_recent_image
 
-    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, min_date: datetime = None) -> list:
+    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None) -> list:
         if not self.available_images:
-            if not self.area_of_interest:
+            if not area_of_interest:
                 raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
-            self.query_available_images(area_of_interest=area_of_interest)
+            self.query_available_images(area_of_interest=area_of_interest, max_date=max_date, days_period=days_period)
 
         available_tile_images = self.available_images.get(tile_name)
-        best_available_image = self._get_best_possile_images(list_of_images=available_tile_images, tile_name=tile_name)
+        best_available_image = self._get_best_possile_images(
+            list_of_images=available_tile_images,
+            max_date=max_date,
+            days_period=days_period
+        )
 
         if not best_available_image:
             aprint(f'Não existe imagem disponível para o tile {tile_name}.', level=LogLevels.ERROR)

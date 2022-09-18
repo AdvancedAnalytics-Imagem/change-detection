@@ -4,7 +4,7 @@ import os
 from enum import Enum, unique
 
 from core._constants import *
-from core.libs.Base import BasePath
+from core.libs.BaseProperties import BaseProperties
 
 class ExtendedEnum(Enum):
     @classmethod
@@ -19,7 +19,7 @@ class ClassAttribute:
     def __str__(self):
         return self.label
 
-class BaseImageClassifier(BasePath):
+class BaseImageClassifier(BaseProperties):
     ml_model_extension: str = '.dlpk'
     ml_model_name: str = ''
     class_field: str = 'CLASS'
@@ -27,7 +27,9 @@ class BaseImageClassifier(BasePath):
     class Classes(ExtendedEnum):
         pass
     
-    def get_ml_model(self, target: str):
+    def get_ml_model(self, target: str) -> str:
+        if self.mo_model: return self.ml_model
+        
         list_of_models = self.get_files_by_extension(folder=ML_MODELS_DIR, extension=self.ml_model_extension)
         target_files = [file for file in list_of_models if target in file]
         return target_files[0]

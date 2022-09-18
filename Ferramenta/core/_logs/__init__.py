@@ -12,9 +12,14 @@ class LogLevels:
     CRITICAL = 'critical'
 
 class MessageLogging:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, path: str = None, prefix: str = None, *args, **kwargs):
+        if not path:
+            path = LOGS_DIR
+        if not prefix:
+            prefix = 'log_'
+
         logging.basicConfig(
-            filename=os.path.join(LOGS_DIR, f'general_loggin_{datetime.now().strftime("%Y%m%d%H%M%S")}.log'),
+            filename=os.path.join(path, f'{prefix}{datetime.now().strftime("%Y%m%d%H%M%S")}.log'),
             filemode='w',
             format='%(asctime)s - %(levelname)s - %(message)s',
             datefmt='%d-%b-%y %H:%M:%S',
@@ -51,6 +56,7 @@ class MessageLogging:
 
 
 log_message = MessageLogging()
+
 
 def aprint(message: str, level: LogLevels = None, display_message: bool = True, progress: bool = False):
     message = u'{}'.format(message)

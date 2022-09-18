@@ -33,7 +33,7 @@ class ImageAcquisition(BaseProperties):
     def set_downloaded_images_path(self, *args, **kwargs) -> None:
         self.service.set_downloaded_images_path(*args, **kwargs)
 
-    def get_historic_and_current_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True):
+    def get_historic_and_current_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True) -> None:
         """Busca as imagens históricas e atuais, baixa e cria um mosaico dos diferentes tiles
             Args:
                 area_of_interest (Feature): _description_
@@ -43,7 +43,7 @@ class ImageAcquisition(BaseProperties):
         """
 
         #* Current Image acquisition
-        current_image_name = f'Current_Image_{self.today_str}'
+        current_image_name = f'Cur_Img_{self.today_str}'
 
         self.current_image = self.get_composed_images_for_aoi(
             max_date=self.now,
@@ -55,7 +55,7 @@ class ImageAcquisition(BaseProperties):
         )
 
         #* Historic Image acquisition
-        historic_image_name = f'Historic_Image_{self.today_str}'
+        historic_image_name = f'Hist_Image_{self.today_str}'
         min_search_date = self.current_image.date_created - timedelta(days=self.service._days_gap)
         
         self.historic_image = self.get_composed_images_for_aoi(
@@ -67,7 +67,7 @@ class ImageAcquisition(BaseProperties):
             output_img_name=historic_image_name
         )
 
-    def get_composed_images_for_aoi(self, max_date: datetime, area_of_interest: Feature, days_period: int = None, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True, output_img_name: str = ''):
+    def get_composed_images_for_aoi(self, max_date: datetime, area_of_interest: Feature, days_period: int = None, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True, output_img_name: str = '') -> Image:
         if not results_output_location:
             results_output_location = self.temp_db
 

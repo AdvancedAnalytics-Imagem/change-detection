@@ -23,17 +23,17 @@ class Configs(BasePath):
             if not isinstance(self.target_area, Feature):
                 self.target_area = Feature(path=self.target_area)
             
-        if hasattr(self, 'classificacao_atual') and self.classificacao_atual:
-            if not isinstance(self.classificacao_atual, Feature):
-                self.classificacao_atual = Feature(path=self.classificacao_atual)
+        if hasattr(self, 'current_classification_dest') and self.current_classification_dest:
+            if not isinstance(self.current_classification_dest, Feature):
+                self.current_classification_dest = Feature(path=self.current_classification_dest)
             
-        if hasattr(self, 'classificacao_historica') and self.classificacao_historica:
-            if not isinstance(self.classificacao_historica, Feature):
-                self.classificacao_historica = Feature(path=self.classificacao_historica)
+        if hasattr(self, 'historic_classification_dest') and self.historic_classification_dest:
+            if not isinstance(self.historic_classification_dest, Feature):
+                self.historic_classification_dest = Feature(path=self.historic_classification_dest)
             
-        if hasattr(self, 'deteccao_de_mudancas') and self.deteccao_de_mudancas:
-            if not isinstance(self.deteccao_de_mudancas, Feature):
-                self.deteccao_de_mudancas = Feature(path=self.deteccao_de_mudancas)
+        if hasattr(self, 'change_detection_dest') and self.change_detection_dest:
+            if not isinstance(self.change_detection_dest, Feature):
+                self.change_detection_dest = Feature(path=self.change_detection_dest)
 
         if hasattr(self, 'output_mosaic_dataset_current') and self.output_mosaic_dataset_current:
             if not isinstance(self.output_mosaic_dataset_current, MosaicDataset):
@@ -68,6 +68,10 @@ class Configs(BasePath):
         if hasattr(self, 'use_arcpy_append') and self.use_arcpy_append:
             if not os.environ.get('USE_ARCPY_APPEND'):
                 os.environ['USE_ARCPY_APPEND'] = 'True'
+        
+        if hasattr(self, 'ml_model') and self.ml_model:
+            if not os.environ.get('ML_MODEL'):
+                os.environ['ML_MODEL'] = self.ml_model
 
         return self
         

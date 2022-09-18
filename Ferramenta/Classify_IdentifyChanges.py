@@ -87,7 +87,7 @@ class ClassifyAndDetectChanges:
         #* Stating Sensor Service Adapter
         image_acquisition_adapter = ImageAcquisition(
             service=self.variables.sensor, # TODO Check sensor type/string
-            credentials=self.variables.sentinel_api_auth
+            credentials=self.variables.credentials
         )
 
         if VARIABLES.current_image:

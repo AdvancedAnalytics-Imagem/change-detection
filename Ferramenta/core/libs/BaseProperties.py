@@ -58,6 +58,10 @@ class BaseProperties(BasePath):
     def use_arcpy_append(self) -> bool:
         return os.environ.get('USE_ARCPY_APPEND', 'True') == 'True'
 
+    @property
+    def ml_model(self) -> str:
+        return os.environ.get('ML_MODEL')
+
     def delete_temporary_content(self) -> None:
         if self.delete_temp_files:
             if Exists(self.temp_dir):

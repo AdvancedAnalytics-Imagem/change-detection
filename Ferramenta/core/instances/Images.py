@@ -7,8 +7,8 @@ from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import date, datetime
 from xml.etree import ElementTree as ET
 
-from arcpy import (CreatePansharpenedRasterDataset_management, EnvManager,
-                   Exists)
+from arcpy import (CreatePansharpenedRasterDataset_management, Describe,
+                   EnvManager, Exists, ProjectRaster_management, SpatialReference)
 from arcpy.ia import ClassifyPixelsUsingDeepLearning
 from arcpy.management import (CompositeBands, CopyRaster, Delete,
                               MosaicToNewRaster)
@@ -82,6 +82,7 @@ class CbersImage(BaseSateliteImage):
             os.makedirs(download_folder)
 
         if not self.exists:
+            aprint(f'Downloading image for tile {self.tileid}')
             files = {
                 'pan_img': os.path.join(download_folder, f"p_{self.tileid}.tif"),
                 'red_img': os.path.join(download_folder, f"r_{self.tileid}.tif"),
@@ -125,13 +126,8 @@ class CbersImage(BaseSateliteImage):
             urllib.request.urlretrieve(url, filepath)
 
     def _erase_image_bands(self, folder: str = '') -> None:
-        for prefix in ['p_', 'r_', 'g_', 'b_', 'n_']:
-            filepath = os.path.join(folder, f"{prefix}{id}.tif")
-            if Exists(filepath):
-                try:
-                    Delete(filepath)
-                except:
-                    continue
+        if Exists(folder):
+            Delete(folder)
 
 class SentinelImage(BaseSateliteImage):
     def __init__(self, api: any, *args, **kwargs):
@@ -273,6 +269,8 @@ class Image(BaseDBPath):
 
         if self.exists:
             return self.full_path
+        
+        list_of_images_paths = self.guarantee_images_coordinate_system(list_of_images_paths)
 
         aprint(f'Criando Mosaico em {self.path}')
         if self.path == 'IN_MEMORY' and len(self.name) > 20:
@@ -289,23 +287,66 @@ class Image(BaseDBPath):
         )
 
         return self.full_path
+    
+    def guarantee_images_coordinate_system(self, list_of_images, out_sr: int = None) -> list:
+        projections = {}
+        for image in list_of_images:
+            proj = Describe(image).spatialReference.factoryCode
+            projections[proj] = [image, *projections.get(proj,[])]
+
+        if len(projections) == 1 and not out_sr:
+            return list_of_images
+        
+        if not out_sr:
+            biggest_list = 0
+            for projection in projections:
+                curr_len = len(projections.get(projection))
+                if curr_len > biggest_list:
+                    out_sr = projection
+                    biggest_list = curr_len
+
+        response = []
+        for projection in projections:
+            if projection != out_sr:
+                response.extend(self.project_image(images=projections.get(projection), out_sr=out_sr))
+                continue
+            response.extend(projections.get(projection))
+
+        return response
+
+    def project_image(self, images: str = None, out_sr: int = None) -> list:
+        sr = SpatialReference(out_sr)
+
+        response = []
+        for image in images:
+            output_image = os.path.join(self.temp_db.full_path, f'temp_proj_{self.name}')
+            if not Exists(output_image):
+                ProjectRaster_management(
+                    image,
+                    output_image,
+                    sr
+                )[0]
+            response.append(output_image)
+        return response
 
     @delete_source_files
     @wrap_on_database_editing
     def extract_by_mask(self, area_of_interest: Feature) -> str:
         if self.mosaic_dataset: return self.full_path
 
-        if Exists(os.path.join(self.path, f'{self._masked_prefix}{self.name}')):
+        name = f'{self._masked_prefix}{self.name}'
+        if Exists(os.path.join(self.path, name)):
+            self.name = name
             aprint(f'Encontrada imagem com máscara {self.full_path}')
-            self.name = f'{self._masked_prefix}{self.name}'
             return self.full_path
 
         aprint(f'Extraindo máscara da imagem {self.full_path}')
+
         clipped_mosaic = ExtractByMask(
             in_raster=self.full_path,
             in_mask_data=area_of_interest.full_path
         )
-        self.name = f'{self._masked_prefix}{self.name}'
+        self.name = name
         clipped_mosaic.save(self.full_path)
 
         return self.full_path
@@ -313,7 +354,9 @@ class Image(BaseDBPath):
     @delete_source_files
     @wrap_on_database_editing
     def stretch_image(self) -> str:
-        if Exists(os.path.join(self.path, f'{self._stretch_prefix}{self.name}')):
+        name = f'{self._stretch_prefix}{self.name}'
+        if Exists(os.path.join(self.path, name)):
+            self.name = name
             aprint(f'Encontrada Imagem com Stretch - {self.full_path}')
             return self.full_path
         
@@ -332,7 +375,7 @@ class Image(BaseDBPath):
             compute_gamma=False,
             sigmoid_strength_level=None
         )
-        self.name = f'{self._stretch_prefix}{self.name}'
+        self.name = name
         stretch.save(self.full_path)
 
         return self.full_path

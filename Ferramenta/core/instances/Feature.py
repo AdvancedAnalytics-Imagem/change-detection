@@ -131,7 +131,6 @@ class Feature(BaseDBPath, CursorManager):
             self._fields = self.get_field_names()
         return self._fields
     
-    @property
     def repair_grometry(self):
         RepairGeometry_management(self.full_path)
 
@@ -178,8 +177,6 @@ class Feature(BaseDBPath, CursorManager):
         else:
             temp_folder = ''
             temp_feature = Project_management(feature, f"temp_project_{self.name.replace('.shp','')}", SpatialReference(out_sr))
-
-        # serialized_shapes = [item[0] for item in SearchCursor(temp_feature, ['SHAPE@'])]
 
         for shape in SearchCursor(temp_feature, ['SHAPE@']):
             geometry = json.loads(shape[0].JSON)
@@ -291,6 +288,9 @@ class Feature(BaseDBPath, CursorManager):
             Returns:
                 list: Field names
         """
+        if not self.exists:
+            aprint(f"Feature {self.full_path} não existe")
+            return None
         field_names = [field.name for field in ListFields(self.full_path) if
             field.name != self.OIDField and
             self.shape_field not in field.name
@@ -304,6 +304,9 @@ class Feature(BaseDBPath, CursorManager):
         return field_names
 
     def get_field_structure(self, lowercase: bool = False) -> dict:
+        if not self.exists:
+            aprint(f"Feature {self.full_path} não existe")
+            return None
         if lowercase:
             return {f.name.lower():f.type for f in ListFields(self.full_path)}
         return {f.name:f.type for f in ListFields(self.full_path)}
@@ -318,6 +321,9 @@ class Feature(BaseDBPath, CursorManager):
             Yields:
                 Iterator[tuple | list | dict]: row data on desired structure
         """
+        if not self.exists:
+            aprint(f"Feature {self.full_path} não existe")
+            return None
         if fields == ['*']:
             fields = self.get_field_names(get_id=True)
             if lower_case_fields:
@@ -423,37 +429,44 @@ class Feature(BaseDBPath, CursorManager):
             )
             return True
         except Exception as e:
-            aprint(e)
+            aprint(f'Erro ao adicionar o campo {field_name},\n{e}')
             return False
 
     def _append(self, origin):
         origin = [o.full_path for o in origin]
-        try:
-            Append_management(
-                inputs=origin,
-                target=self.full_path,
-                schema_type='NO_TEST'
-            )
-        except Exception as e:
-            print(e)
+        Append_management(
+            inputs=origin,
+            target=self.full_path,
+            schema_type='NO_TEST'
+        )
 
     def regular_append(self, origin, where_clause: str = None, extra_constant_values: dict = {}, field_map: dict = {}):
+        def stripped_name(name):
+            return name.strip().lower().replace('_','').replace('-','')
+
         if not isinstance(origin, list):
             origin = [origin]
         
-        if extra_constant_values:
-            for feature in origin:
-                for field in extra_constant_values:
-                    feature.calculate_field(field_name=field, field_value=extra_constant_values[field])
+        field_names = {stripped_name(field):field
+                       for field in self.get_field_names()}
 
-        if field_map:
-            for feature in origin:
+        for feature in origin:
+            if extra_constant_values:
+                for field in extra_constant_values:
+                    field_name = field_names.get(stripped_name(field), field)
+                    feature.calculate_field(
+                        field_name=field_name,
+                        field_value=extra_constant_values[field]
+                    )
+
+            if field_map:
                 field_structure = feature.get_field_structure(lowercase=True)
                 for field in field_map:
+                    field_name = field_names.get(stripped_name(field), field)
                     expression=f"!{field}!"
                     code_block=""
                     feature.calculate_field(
-                        field_name=field_map[field],
+                        field_name=field_name,
                         field_value=field_structure.get(field),
                         expression=expression,
                         code_block=code_block)
@@ -541,6 +554,7 @@ class Feature(BaseDBPath, CursorManager):
                 cursor.updateRow(values)
 
     def calculate_field(self, field_name: str, field_value: any = str, expression: str = None, code_block: str = None, expression_type: str = "PYTHON3", image_classifier: BaseImageClassifier = None):
+        aprint(f'Calculando campo {field_name}')
         if image_classifier is not None:
             self.look_for_missing_fields(fields={image_classifier.class_field:str})
             for classified_class in image_classifier.Classes:

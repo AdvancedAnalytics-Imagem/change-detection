@@ -17,6 +17,9 @@ from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import BaseImageClassifier
 from core.libs.ErrorManager import InvalidMLClassifierError
 
+from AppendResults import AppendResults
+
+
 def load_arcgis_variables(variables_obj):
     if len(GetParameterInfo())>0:
         variables_obj.debug = False
@@ -30,17 +33,17 @@ def load_arcgis_variables(variables_obj):
         if target_area and variables_obj.target_area != target_area:
             variables_obj.target_area = target_area
 
-        deteccao_de_mudancas = GetParameterAsText(1)
-        if deteccao_de_mudancas and variables_obj.deteccao_de_mudancas != deteccao_de_mudancas:
-            variables_obj.deteccao_de_mudancas = deteccao_de_mudancas
+        change_detection_dest = GetParameterAsText(1)
+        if change_detection_dest and variables_obj.change_detection_dest != change_detection_dest:
+            variables_obj.change_detection_dest = change_detection_dest
 
-        classificacao_atual = GetParameterAsText(2)
-        if classificacao_atual and variables_obj.classificacao_atual != classificacao_atual:
-            variables_obj.classificacao_atual = classificacao_atual
+        current_classification_dest = GetParameterAsText(2)
+        if current_classification_dest and variables_obj.current_classification_dest != current_classification_dest:
+            variables_obj.current_classification_dest = current_classification_dest
 
-        classificacao_historica = GetParameterAsText(3)
-        if classificacao_historica and variables_obj.classificacao_historica != classificacao_historica:
-            variables_obj.classificacao_historica = classificacao_historica
+        historic_classification_dest = GetParameterAsText(3)
+        if historic_classification_dest and variables_obj.historic_classification_dest != historic_classification_dest:
+            variables_obj.historic_classification_dest = historic_classification_dest
 
         output_mosaic_dataset_current = GetParameterAsText(5)
         if output_mosaic_dataset_current and variables_obj.output_mosaic_dataset_current != output_mosaic_dataset_current:
@@ -67,7 +70,7 @@ def load_arcgis_variables(variables_obj):
         image_storage = GetParameterAsText(4)
         if image_storage:
             os.environ['IMAGE_STORAGE'] = image_storage
-            
+
         temp_dir = GetParameterAsText(8)
         if temp_dir:
             os.environ['TEMP_DIR'] = temp_dir
@@ -164,62 +167,26 @@ def main():
 
     images = get_images()
 
-    add_image_to_mosaic_dataset(
-        image=images.current_image,
-        location=BASE_CONFIGS.image_storage,
-        mosaic_dataset=VARIABLES.output_mosaic_dataset_current
-    )
-    add_image_to_mosaic_dataset(
-        image=images.historic_image,
-        location=BASE_CONFIGS.image_storage,
-        mosaic_dataset=VARIABLES.output_mosaic_dataset_historic
-    )
+    if hasattr(VARIABLES, 'output_mosaic_dataset_current') and VARIABLES.output_mosaic_dataset_current:
+        add_image_to_mosaic_dataset(
+            image=images.current_image,
+            location=BASE_CONFIGS.image_storage,
+            mosaic_dataset=VARIABLES.output_mosaic_dataset_current
+        )
+    if hasattr(VARIABLES, 'output_mosaic_dataset_historic') and VARIABLES.output_mosaic_dataset_historic:
+        add_image_to_mosaic_dataset(
+            image=images.historic_image,
+            location=BASE_CONFIGS.image_storage,
+            mosaic_dataset=VARIABLES.output_mosaic_dataset_historic
+        )
 
     current_classification = classify_image(image=images.current_image, ml_model=images.service.ml_model)
     historic_classification = classify_image(image=images.historic_image, ml_model=images.service.ml_model)
 
     change_detection = detect_changes(current=current_classification, historic=historic_classification)
+    
+    AppendResults(variables=VARIABLES, configs=BASE_CONFIGS).append_data()
 
-    tile_names = ', '.join(images.service.tile_names)
-    VARIABLES.deteccao_de_mudancas.append_dataset(
-        origin=change_detection,
-        extra_constant_values={
-            'data_a':images.current_image.date_created,
-            'dataimgatual':images.current_image.date_created,
-            'data_h':images.historic_image.date_created,
-            'dataimghist':images.historic_image.date_created,
-            'data_proc':images.current_image.date_processed,
-            'dataprocessamento':images.current_image.date_processed,
-            'sensor':VARIABLES.sensor,
-            'tiles':tile_names
-        },
-        field_map={
-            'class':'class_h',
-            'class_1':'class_a'
-        }
-    )
-    VARIABLES.classificacao_atual.append_dataset(
-        origin=current_classification,
-        extra_constant_values={
-            'data':images.current_image.date_created,
-            'dataimagem':images.current_image.date_created,
-            'data_proc':images.current_image.date_processed,
-            'dataprocessamento':images.current_image.date_processed,
-            'sensor':VARIABLES.sensor,
-            'tiles':tile_names
-        }
-    )
-    VARIABLES.classificacao_historica.append_dataset(
-        origin=historic_classification,
-        extra_constant_values={
-            'data':images.historic_image.date_created,
-            'dataimagem':images.historic_image.date_created,
-            'data_proc':images.historic_image.date_created,
-            'dataprocessamento':images.historic_image.date_created,
-            'sensor':VARIABLES.sensor,
-            'tiles':tile_names
-        }
-    )
 
 if __name__ == '__main__':
     aprint(

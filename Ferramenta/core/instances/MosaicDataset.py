@@ -32,16 +32,20 @@ class MosaicDataset(BaseDBPath):
         if images_for_composition:
             self.add_images(images=images_for_composition)
         
-        footprints_name = list(
-            filter(
-                lambda n : n.endswith('_CAT'),
-                Describe(self.full_path).childrenNames
+        try:
+            footprints_name = list(
+                filter(
+                    lambda n : n.endswith('_CAT'),
+                    Describe(self.full_path).childrenNames
+                )
             )
-        )
-        if footprints_name:
-            self.footprints_name = footprints_name[0]
-            self.footprints_layer = Feature(path=self.path, name=self.footprints_name)
-    
+            if footprints_name:
+                self.footprints_name = footprints_name[0]
+        except Exception as e:
+            print(e)
+            self.footprints_name = f'AMD_{self.name}_CAT'
+        self.footprints_layer = Feature(path=self.path, name=self.footprints_name)
+        
     @property
     def coordinate_system(self) -> SpatialReference:
         if not self._coordinate_system:

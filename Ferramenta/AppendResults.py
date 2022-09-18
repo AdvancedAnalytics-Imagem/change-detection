@@ -15,9 +15,9 @@ from core.ml_models.ImageClassifier import BaseImageClassifier
 
 
 def load_arcgis_variables(variables_obj: Configs) -> Configs:
-    current_image_date = datetime.now()
-    historic_image_date = datetime.now() - timedelta(days=30)
-    processing_date = datetime.now()
+    variables_obj.current_image_date = datetime.now()
+    variables_obj.historic_image_date = datetime.now() - timedelta(days=30)
+    variables_obj.processing_date = datetime.now()
 
     if len(GetParameterInfo())>0:
         variables_obj.debug = False
@@ -141,19 +141,15 @@ class AppendResults:
         destination.append_dataset(
             origin=origin,
             extra_constant_values={
-                'data_a':self.variables.current_image_date,
                 'dataimgatual':self.variables.current_image_date,
-                'data_h':self.variables.historic_image_date,
                 'dataimghist':self.variables.historic_image_date,
-                'data_proc':self.variables.processing_date,
                 'dataprocessamento':self.variables.processing_date,
-                'sensor':self.variables.sensor,
-                'tiles':tile_names
+                'sensor_a':self.variables.sensor,
+                'tiles_a':tile_names
             },
             field_map={
                 'class':'class_h',
                 'class_1':'class_a',
-                'objectid': 'id'
             }
         )
         aprint('Append de dados de classificação concluído com sucesso')

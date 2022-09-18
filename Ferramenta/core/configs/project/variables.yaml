@@ -1,33 +1,42 @@
 # Polígono da área de interesse (feature class, .shp)
-target_area: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\CAESB_ChangeDetection\\test.shp"
+target_area: ""
 
 # Tabelas de destino dos resultados da classificação
-deteccao_de_mudancas: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca"
-classificacao_atual: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemAtual"
-classificacao_historica: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\AtlasCaesb__BDGIS__DMUD_DeteccaoMudanca\\AtlasCaesb__BDGIS__DMUD_ClassificacaoImagemHistorica"
+change_detection_dest: ""
+current_classification_dest: ""
+historic_classification_dest: ""
 
 # Pasta de armazenamento das imagens finais
-image_storage: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\Definitive_Images"
+image_storage: ""
 
 # Mosaic dataset de destino das imagens finais (Caso mosaicadas e clipadas)
-output_mosaic_dataset_current: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\OutputImages.gdb\\Output_Images_A"
-output_mosaic_dataset_historic: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\OutputImages.gdb\\Output_Images_H"
+output_mosaic_dataset_current: ""
+output_mosaic_dataset_historic: ""
 
 # Pastas temporárias
-temp_db: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\temp\\temp.gdb"
-temp_dir: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\temp"
-download_storage: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\downloads"
+temp_dir: ""
+download_storage: ""
+
+# Caso True, arquivos temporários serão deletados ao fim do processamento
 delete_temp_files: False
+# Caso True, arquivos temporários serão deletados enquanto o processamento ocorre
 delete_temp_files_while_processing: False
 
 # Parametros de Classificação
 max_cloud_coverage: 20
+
+# Sensores para classificação: ["CBERS", "SENTINEL2"]
 sensor: "SENTINEL2"
-# sensor: "CBERS"
-compose_as_single_image: True # Caso seja False, ao invés de mosaicar os tiles da área de interesse e clipar na região, os tiles serão processados em um Mosaic Dataset
+
+# Por padrão, as imagens dos tiles serão compostas e clipadas conforme a máscara da área de interesse
+# Caso este parâmetro seja False, os tiles serão processados em um Mosaic Dataset
+compose_as_single_image: True
+
 classification_arguments: "padding 70;batch_size 2;predict_background True;tile_size 256"
+ml_model: ""
 classification_processor: "CPU"
-n_cores: 8
+# Caso o número de cores a serem utilizados seja 0, todos os cores disponíveis serão utilizados
+n_cores: 0
 
 # Parâmetros de Execução
 debug: True
