@@ -10,6 +10,7 @@ from arcpy.management import Delete
 from core._constants import *
 from core._logs import *
 from core.libs.ProgressTracking import ProgressTracker
+from requests.exceptions import ConnectionError
 from sentinelsat.exceptions import ServerError as SetinelServerError
 
 from .ErrorManager import (FolderAccessError, InvalidPathError,
@@ -53,12 +54,16 @@ def prevent_server_error(wrapped_function):
             try:
                 return wrapped_function(*args, **kwargs)
             except Exception as e:
-                # if not isinstance(e, SetinelServerError):
-                #     raise(e)
                 if failed_attempts > MaxFailuresError.max_failures:
                     raise MaxFailuresError(wrapped_function.__name__, attempts=failed_attempts)
-                aprint(f'Sentinel Server error:\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds}', level=LogLevels.WARNING)
-                failed_attempts += 1
+                if isinstance(e, SetinelServerError):
+                    aprint(f'Sentinel Server error:\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds} segundos...\n Erro: {e}', level=LogLevels.WARNING)
+                    failed_attempts += 1
+                elif isinstance(e, ConnectionError):
+                    aprint(f'CBERS Server error:\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds} segundos...\n Erro: {e}', level=LogLevels.WARNING)
+                    failed_attempts += 1
+                else:
+                    raise(e)
                 time.sleep(failed_attempts*MaxFailuresError.wait_time_seconds)
     return reattempt_execution
 
@@ -76,12 +81,11 @@ class BasePath:
             self.name = name.replace(' ','_').replace(':','')
             self.load_path_variable(path=path)
 
+    def __repr__(self):
+        return self.full_path
+
     @property
     def full_path(self):
-        if not self.path:
-            raise InvalidPathError(object=self)
-        if not self.name:
-            return self.path
         if hasattr(self, 'database') and self.database:
             if self.database.feature_dataset:
                 return os.path.join(self.database.feature_dataset_full_path, self.name)

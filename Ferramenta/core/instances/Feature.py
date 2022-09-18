@@ -176,12 +176,13 @@ class Feature(BaseDBPath, CursorManager):
             temp_folder = self.load_path_variable(ROOT_DIR, f'temp_{self.today_str}')
             temp_feature = Project_management(feature, os.path.join(temp_folder, f"temp_project_{self.name}"), SpatialReference(out_sr))
         else:
+            temp_folder = ''
             temp_feature = Project_management(feature, f"temp_project_{self.name.replace('.shp','')}", SpatialReference(out_sr))
 
-        serialized_shapes = [item[0] for item in SearchCursor(temp_feature, ['SHAPE@'])]
-        
-        for shape in serialized_shapes:
-            geometry = json.loads(shape.JSON)
+        # serialized_shapes = [item[0] for item in SearchCursor(temp_feature, ['SHAPE@'])]
+
+        for shape in SearchCursor(temp_feature, ['SHAPE@']):
+            geometry = json.loads(shape[0].JSON)
             rings = geometry.get('rings')
             feature = {
                 "type": "Feature",
@@ -192,22 +193,46 @@ class Feature(BaseDBPath, CursorManager):
                 "properties": {}
             }
             geojson['features'].append(feature)
-        
+
         if temp_folder:
             Delete(temp_folder)
+        Delete(temp_feature)
 
         return geojson
 
-    def bounding_box(self) -> list:
-        for coordinate in self.iterate_feature(fields=['SHAPE@']):
-            return [coordinate[0].extent.XMin, coordinate[0].extent.YMin, coordinate[0].extent.XMax, coordinate[0].extent.YMax]
+    def bounding_box(self, out_sr=4326) -> list:
+        response = []
+
+        if self.temp_db.full_path == 'IN_MEMORY':
+            temp_folder = self.load_path_variable(ROOT_DIR, f'temp_{self.today_str}')
+            temp_feature = Project_management(self.full_path, os.path.join(temp_folder, f"temp_project_{self.name}"), SpatialReference(out_sr))
+        else:
+            output_temp_feature = os.path.join(self.temp_db.full_path, f"temp_project_{self.name.replace('.shp','')}")
+            if Exists(output_temp_feature):
+                Delete(output_temp_feature)
+            temp_folder = ''
+            temp_feature = Project_management(
+                self.full_path,
+                output_temp_feature,
+                SpatialReference(out_sr)
+            )
+
+        for feature in SearchCursor(temp_feature, ['SHAPE@']):
+            response = [feature[0].extent.XMin, feature[0].extent.YMin, feature[0].extent.XMax, feature[0].extent.YMax]
+
+        if temp_folder:
+            Delete(temp_folder)
+        Delete(temp_feature)
+
+        return response
 
     def select_by_attributes(self, where_clause: str) -> dict:
         return SelectLayerByAttribute_management(in_layer_or_view=self.full_path, where_clause=where_clause)
 
     @property
     def delete(self):
-        Delete(self.full_path)
+        if self.exists:
+            Delete(self.full_path)
 
     def select_by_location(self, intersecting_feature: str, distance: int = None, overlap_type: str = 'INTERSECT') -> dict:
         """Returns and selects current feature by location, based on intersection with an intersecting feature

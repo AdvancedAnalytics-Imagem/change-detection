@@ -51,7 +51,7 @@ class Configs(BasePath):
             if not os.environ.get('TEMP_DIR'):
                 os.environ['TEMP_DIR'] = self.temp_dir
             if not os.environ.get('TEMP_DB'):
-                os.environ['TEMP_DB'] = os.path.join(temp_dir, f'{os.path.basename(self.temp_dir)}.gdb')
+                os.environ['TEMP_DB'] = os.path.join(self.temp_dir, f'{os.path.basename(self.temp_dir)}.gdb')
 
         if hasattr(self, 'download_storage') and self.download_storage:
             if not os.environ.get('DOWNLOAD_STORAGE'):
