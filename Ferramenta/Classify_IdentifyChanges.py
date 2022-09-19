@@ -72,6 +72,13 @@ def load_arcgis_variables(variables_obj: Configs) -> Configs:
         delete_temp_files = GetParameter(8)
         if delete_temp_files:
             os.environ['DELETE_TEMP_FILES'] = 'True'
+            
+        ml_model = GetParameter(9)
+        if ml_model:
+            if Exists(ml_model) and (ml_model.endswith('.dlpk') or ml_model.endswith('.emd')):
+                os.environ['ML_MODEL'] = ml_model
+            else:
+                aprint(f'Não foi possível encontrar o modelo de deep learning {ml_model}')
 
     return variables_obj.init_base_variables()
 
