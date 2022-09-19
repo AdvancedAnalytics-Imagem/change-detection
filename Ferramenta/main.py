@@ -180,11 +180,24 @@ def main():
             mosaic_dataset=VARIABLES.output_mosaic_dataset_historic
         )
 
-    current_classification = classify_image(image=images.current_image, ml_model=images.service.ml_model)
-    historic_classification = classify_image(image=images.historic_image, ml_model=images.service.ml_model)
+    VARIABLES.current_classification = classify_image(
+        image=images.current_image,
+        ml_model=images.service.ml_model
+    )
+    VARIABLES.current_image_date = images.current_image.date_created
 
-    change_detection = detect_changes(current=current_classification, historic=historic_classification)
-    
+    VARIABLES.historic_classification = classify_image(
+        image=images.historic_image,
+        ml_model=images.service.ml_model
+    )
+    VARIABLES.historic_image_date = images.historic_image.date_created
+
+    VARIABLES.change_detection = detect_changes(
+        current=VARIABLES.current_classification,
+        historic=VARIABLES.historic_classification
+    )
+    VARIABLES.processing_date = datetime.now()
+
     AppendResults(variables=VARIABLES, configs=BASE_CONFIGS).append_data()
 
 

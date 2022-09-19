@@ -226,7 +226,6 @@ class Feature(BaseDBPath, CursorManager):
     def select_by_attributes(self, where_clause: str) -> dict:
         return SelectLayerByAttribute_management(in_layer_or_view=self.full_path, where_clause=where_clause)
 
-    @property
     def delete(self):
         if self.exists:
             Delete(self.full_path)

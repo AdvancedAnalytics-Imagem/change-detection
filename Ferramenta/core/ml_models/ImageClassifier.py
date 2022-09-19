@@ -28,7 +28,7 @@ class BaseImageClassifier(BaseProperties):
         pass
     
     def get_ml_model(self, target: str) -> str:
-        if self.mo_model: return self.ml_model
+        if self.ml_model: return self.ml_model
         
         list_of_models = self.get_files_by_extension(folder=ML_MODELS_DIR, extension=self.ml_model_extension)
         target_files = [file for file in list_of_models if target in file]

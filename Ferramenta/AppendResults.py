@@ -15,9 +15,9 @@ from core.ml_models.ImageClassifier import BaseImageClassifier
 
 
 def load_arcgis_variables(variables_obj: Configs) -> Configs:
-    variables_obj.current_image_date = datetime.now()
-    variables_obj.historic_image_date = datetime.now() - timedelta(days=30)
-    variables_obj.processing_date = datetime.now()
+    current_image_date = datetime.now()
+    historic_image_date = datetime.now() - timedelta(days=30)
+    processing_date = datetime.now()
 
     if len(GetParameterInfo())>0:
         variables_obj.debug = False
