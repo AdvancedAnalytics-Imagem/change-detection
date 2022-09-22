@@ -105,7 +105,6 @@ class Cbers(BaseImageAcquisitionService):
             self._select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
         self.tile_names = [i[0] for i in SearchCursor(self.selected_tiles.full_path, ['PATH_ROW'])]
         aprint(f'Tiles selecionados:\n{",".join(self.tile_names)}')
-        self.selected_tiles.delete()
         return self.tile_names
         
     @prevent_server_error
@@ -255,7 +254,6 @@ class Sentinel2(BaseImageAcquisitionService):
             self._select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
         self.tile_names = [i[0] for i in SearchCursor(self.selected_tiles.full_path, ['NAME'])]
         aprint(f'Tiles selecionados:\n{",".join(self.tile_names)}')
-        self.selected_tiles.delete()
         return self.tile_names
 
     def query_available_images(self, area_of_interest: Feature, max_date: datetime, days_period: int) -> dict:

@@ -226,10 +226,6 @@ class Feature(BaseDBPath, CursorManager):
     def select_by_attributes(self, where_clause: str) -> dict:
         return SelectLayerByAttribute_management(in_layer_or_view=self.full_path, where_clause=where_clause)
 
-    def delete(self):
-        if self.exists:
-            Delete(self.full_path)
-
     def select_by_location(self, intersecting_feature: str, distance: int = None, overlap_type: str = 'INTERSECT') -> dict:
         """Returns and selects current feature by location, based on intersection with an intersecting feature
             Args:
@@ -288,8 +284,7 @@ class Feature(BaseDBPath, CursorManager):
                 list: Field names
         """
         if not self.exists:
-            aprint(f"Feature {self.full_path} não existe")
-            return None
+            raise UnexistingFeatureError(feature=self.full_path)
         field_names = [field.name for field in ListFields(self.full_path) if
             field.name != self.OIDField and
             self.shape_field not in field.name
@@ -304,8 +299,7 @@ class Feature(BaseDBPath, CursorManager):
 
     def get_field_structure(self, lowercase: bool = False) -> dict:
         if not self.exists:
-            aprint(f"Feature {self.full_path} não existe")
-            return None
+            raise UnexistingFeatureError(feature=self.full_path)
         if lowercase:
             return {f.name.lower():f.type for f in ListFields(self.full_path)}
         return {f.name:f.type for f in ListFields(self.full_path)}
@@ -321,8 +315,7 @@ class Feature(BaseDBPath, CursorManager):
                 Iterator[tuple | list | dict]: row data on desired structure
         """
         if not self.exists:
-            aprint(f"Feature {self.full_path} não existe")
-            return None
+            raise UnexistingFeatureError(feature=self.full_path)
         if fields == ['*']:
             fields = self.get_field_names(get_id=True)
             if lower_case_fields:

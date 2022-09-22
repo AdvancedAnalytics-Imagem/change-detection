@@ -4,7 +4,7 @@ import datetime
 import os
 from datetime import datetime
 
-from arcpy import GetParameter, GetParameterAsText, GetParameterInfo
+from arcpy import GetParameter, GetParameterAsText, GetParameterInfo, Exists
 
 from core._logs import *
 from core.adapters.SateliteImagery import ImageAcquisition
@@ -98,6 +98,11 @@ def load_arcgis_variables(variables_obj):
                 os.environ['ML_MODEL'] = ml_model
             else:
                 aprint(f'Não foi possível encontrar o modelo de deep learning {ml_model}')
+
+        sensor = GetParameterAsText(16).upper()
+        if sensor and sensor in ['SENTINEL2', 'CBERS']:
+            variables_obj.sensor = sensor
+            aprint(f'Processando imagens do sensor {sensor}')
             
     return variables_obj.init_base_variables()
 

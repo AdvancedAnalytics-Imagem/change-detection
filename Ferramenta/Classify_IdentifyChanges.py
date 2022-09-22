@@ -3,7 +3,7 @@
 import datetime
 from datetime import datetime
 
-from arcpy import GetParameter, GetParameterAsText, GetParameterInfo
+from arcpy import GetParameter, GetParameterAsText, GetParameterInfo, Exists
 
 from core._logs import *
 from core.adapters.SateliteImagery import ImageAcquisition
