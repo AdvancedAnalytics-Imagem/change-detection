@@ -186,7 +186,7 @@ class Cbers(BaseImageAcquisitionService):
         if not self.credentials:
             raise NoCbersCredentials()
     
-    def _get_best_possile_images(self, list_of_images: list, max_date: datetime = None, days_period: datetime = None) -> list[BaseSateliteImage]:
+    def _get_best_possile_images(self, list_of_images: list, max_date: datetime = None, days_period: datetime = None) -> list:
         return self._get_most_recent_image(images=list_of_images, max_date=max_date, days_period=days_period)
 
     def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None) -> list:
