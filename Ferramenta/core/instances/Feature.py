@@ -439,13 +439,13 @@ class Feature(BaseDBPath, CursorManager):
         if not isinstance(origin, list):
             origin = [origin]
         
-        field_names = {stripped_name(field):field
+        dest_feature_field_names = {stripped_name(field):field
                        for field in self.get_field_names()}
 
         for feature in origin:
             if extra_constant_values:
                 for field in extra_constant_values:
-                    field_name = field_names.get(stripped_name(field), field)
+                    field_name = dest_feature_field_names.get(stripped_name(field), field)
                     feature.calculate_field(
                         field_name=field_name,
                         field_value=extra_constant_values[field]
@@ -454,12 +454,16 @@ class Feature(BaseDBPath, CursorManager):
             if field_map:
                 field_structure = feature.get_field_structure(lowercase=True)
                 for field in field_map:
-                    field_name = field_names.get(stripped_name(field), field)
-                    expression=f"!{field}!"
+                    new_field_name = dest_feature_field_names.get(stripped_name(field), field)
+                    original_field = field_map.get(field)
+                    original_field_value = field_structure.get(original_field)
+                    
+                    expression=f"!{original_field}!"
                     code_block=""
+
                     feature.calculate_field(
-                        field_name=field_name,
-                        field_value=field_structure.get(field),
+                        field_name=new_field_name,
+                        field_value=original_field_value,
                         expression=expression,
                         code_block=code_block)
 

@@ -42,7 +42,6 @@ class MosaicDataset(BaseDBPath):
             if footprints_name:
                 self.footprints_name = footprints_name[0]
         except Exception as e:
-            print(e)
             self.footprints_name = f'AMD_{self.name}_CAT'
         self.footprints_layer = Feature(path=self.path, name=self.footprints_name)
         

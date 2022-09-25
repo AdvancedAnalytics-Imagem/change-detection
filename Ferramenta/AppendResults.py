@@ -145,11 +145,13 @@ class AppendResults:
                 'dataimghist':self.variables.historic_image_date,
                 'dataprocessamento':self.variables.processing_date,
                 'sensor_a':self.variables.sensor,
-                'tiles_a':tile_names
+                'tiles_a':tile_names,
+                'sensor':self.variables.sensor,
+                'tiles':tile_names
             },
-            field_map={
-                'class':'class_h',
-                'class_1':'class_a',
+            field_map={ # New field : Existing Field
+                'class_h':'class',
+                'class_a':'class_1',
             }
         )
         aprint('Append de dados de classificação concluído com sucesso')
