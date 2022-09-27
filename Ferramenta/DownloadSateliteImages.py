@@ -69,9 +69,13 @@ def load_arcgis_variables(variables_obj: Configs) -> Configs:
 
         #* Deletar arquivos temporarios (Opcional - False)
         delete_temp_files = GetParameter(8)
-        aprint(delete_temp_files)
         if delete_temp_files:
             os.environ['DELETE_TEMP_FILES'] = 'True'
+
+        sensor = GetParameterAsText(9).upper()
+        if sensor and sensor in ['SENTINEL2', 'CBERS']:
+            variables_obj.sensor = sensor
+            aprint(f'Processando imagens do sensor {sensor}')
 
     return variables_obj.init_base_variables()
 
