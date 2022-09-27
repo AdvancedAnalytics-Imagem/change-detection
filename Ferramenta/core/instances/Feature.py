@@ -396,12 +396,16 @@ class Feature(BaseDBPath, CursorManager):
             Returns:
                 dict: Fields that exist on current feature
         """
-        all_fields = self.get_field_names(get_shape=False)
-        all_fields = list(map(lambda x: x.lower(), all_fields))
+        def stripped_name(name):
+            return name.strip().lower().replace('_','').replace('-','')
+        
+        all_fields = {stripped_name(field):field
+                                    for field in self.get_field_names()}
+
         field_names = list(fields.keys())
 
         for field_name in field_names:
-            if field_name.lower() in all_fields:
+            if stripped_name(field_name) in all_fields:
                 continue
             success = self.add_field(field_name=field_name, field_value=fields.get(field_name))
             if not success:
