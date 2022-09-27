@@ -14,6 +14,7 @@ from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import BaseImageClassifier
 
 
+
 def load_arcgis_variables(variables_obj: Configs) -> Configs:
     current_image_date = datetime.now()
     historic_image_date = datetime.now() - timedelta(days=30)
