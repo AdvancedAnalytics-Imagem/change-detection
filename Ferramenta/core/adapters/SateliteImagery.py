@@ -7,6 +7,7 @@ from enum import Enum, unique
 from arcpy import Exists
 from core._constants import *
 from core.instances.Database import Database
+from core.libs.CustomExceptions import NoAvailableImageOnPeriod
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.libs.BaseProperties import BaseProperties
@@ -17,6 +18,7 @@ from core.services.SateliteImagery.ImageryServices import (
 class ImageAcquisition(BaseProperties):
     current_image: Image
     historic_image: Image
+    service: BaseImageAcquisitionService
 
     @unique
     class Services(Enum):
@@ -33,7 +35,14 @@ class ImageAcquisition(BaseProperties):
     def set_downloaded_images_path(self, *args, **kwargs) -> None:
         self.service.set_downloaded_images_path(*args, **kwargs)
 
-    def get_historic_and_current_images(self, area_of_interest: Feature, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True) -> None:
+    def get_historic_and_current_images(
+        self,
+        area_of_interest: Feature,
+        results_output_location: Database = None,
+        max_cloud_coverage: int = None,
+        compose_as_single_image: bool = True,
+        days_period: int = None,
+        max_date: datetime = None) -> None:
         """Busca as imagens históricas e atuais, baixa e cria um mosaico dos diferentes tiles
             Args:
                 area_of_interest (Feature): _description_
@@ -41,22 +50,27 @@ class ImageAcquisition(BaseProperties):
                 max_cloud_coverage (int, optional): _description_. Defaults to None.
                 compose_as_single_image (bool, optional): _description_. Defaults to True.
         """
-
+        if not max_date:
+            max_date = self.now
+        if not days_period:
+            days_period = self.service._days_gap
+            
         #* Current Image acquisition
         current_image_name = f'Cur_Img_{self.today_str}'
 
         self.current_image = self.get_composed_images_for_aoi(
-            max_date=self.now,
+            max_date=max_date,
             area_of_interest=area_of_interest,
             results_output_location=results_output_location,
             max_cloud_coverage=max_cloud_coverage,
             compose_as_single_image=compose_as_single_image,
-            output_img_name=current_image_name
+            output_img_name=current_image_name,
+            days_period=days_period
         )
 
         #* Historic Image acquisition
         historic_image_name = f'Hist_Image_{self.today_str}'
-        min_search_date = self.current_image.date_created - timedelta(days=self.service._days_gap)
+        min_search_date = self.current_image.date_created - timedelta(days=days_period)
         
         self.historic_image = self.get_composed_images_for_aoi(
             max_date=min_search_date,
@@ -64,10 +78,20 @@ class ImageAcquisition(BaseProperties):
             results_output_location=results_output_location,
             max_cloud_coverage=max_cloud_coverage,
             compose_as_single_image=compose_as_single_image,
-            output_img_name=historic_image_name
+            output_img_name=historic_image_name,
+            days_period=days_period
         )
 
-    def get_composed_images_for_aoi(self, max_date: datetime, area_of_interest: Feature, days_period: int = None, results_output_location: Database = None, max_cloud_coverage: int = None, compose_as_single_image: bool = True, output_img_name: str = '') -> Image:
+    def get_composed_images_for_aoi(
+        self,
+        max_date: datetime,
+        area_of_interest: Feature,
+        days_period: int = None,
+        results_output_location: Database = None,
+        max_cloud_coverage: int = None,
+        compose_as_single_image: bool = True,
+        output_img_name: str = ''
+    ) -> Image:
         if not results_output_location:
             results_output_location = self.temp_db
 
@@ -97,13 +121,20 @@ class ImageAcquisition(BaseProperties):
         images = {}
         for tile in self.intersecting_tiles:
             tile_images = self.service.get_best_available_images_for_tile(tile_name=tile, area_of_interest=area_of_interest)
-            for tile_image in tile_images:
-                images[tile_image.datetime] = [*images.get(tile_image.datetime,[]), tile_image]
+            if tile_images:
+                for tile_image in tile_images:
+                    images[tile_image.datetime] = [*images.get(tile_image.datetime,[]), tile_image]
             self.progress_tracker.report_progress(add_progress=True)
 
         composition_images = []
         [composition_images.extend(i) for i in images.values()]
+        if not composition_images:
+            raise NoAvailableImageOnPeriod(
+                tiles=self.service.tile_names,
+                period=self.service._days_gap
+            )
 
+        # Composed image with all available downloaded images for that tile
         image = Image(
             path=results_output_location.full_path,
             name=output_img_name,
@@ -111,6 +142,7 @@ class ImageAcquisition(BaseProperties):
             compose_as_single_image=compose_as_single_image,
             mask=area_of_interest
         )
+
         tiles_dates = list(images.keys())
         tiles_dates.sort()
         image.date_created = tiles_dates[-1]

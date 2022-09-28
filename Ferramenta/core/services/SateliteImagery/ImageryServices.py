@@ -17,7 +17,7 @@ from core.instances.Images import (BaseSateliteImage, CbersImage, Image,
                                    SentinelImage)
 from core.libs.Base import ProgressTracker, prevent_server_error
 from core.libs.BaseProperties import BaseProperties
-from core.libs.ErrorManager import NoBaseTilesLayerFound, NoCbersCredentials
+from core.libs.CustomExceptions import NoBaseTilesLayerFound, NoCbersCredentials
 from core.ml_models.ImageClassifier import (BaseImageClassifier,
                                             CbersImageClassifier,
                                             Sentinel2ImageClassifier)
@@ -200,10 +200,14 @@ class Cbers(BaseImageAcquisitionService):
             max_date=max_date,
             days_period=days_period)
 
+        if not best_available_image:
+            aprint(f'Não foi possível encontrar imagem disponível para o tile {tile_name} no período de interesse.', level=LogLevels.WARNING)
+            return []
+
         if not isinstance(best_available_image, list): best_available_image = [best_available_image]
         [image.download_image(
             image_database=self.images_database,
-            output_name=f'ComposedTile_{tile_name}'
+            output_name=f'CBR_{tile_name}'
         ) for image in best_available_image]
 
         # List of best images Instances (already downloaded)
@@ -340,7 +344,7 @@ class Sentinel2(BaseImageAcquisitionService):
         if not isinstance(best_available_image, list): best_available_image = [best_available_image]
         [image.download_image(
             image_database=self.images_database,
-            output_name=f'ComposedTile_{tile_name}'
+            output_name=f'SNT2_{tile_name}'
         ) for image in best_available_image]
 
         # List of best images Instances (already downloaded)

@@ -116,7 +116,14 @@ class CbersImage(BaseSateliteImage):
     @wrap_on_database_editing
     def _pansharp_image(self, composed_img: str,  pan_img: str) -> None:
         CreatePansharpenedRasterDataset_management(
-            composed_img, '1', '2', '3', '4', self.full_path, pan_img, 'Gram-Schmidt'
+            in_raster=composed_img,
+            red_channel='1',
+            green_channel='2',
+            blue_channel='3',
+            infrared_channel='4',
+            out_raster_dataset=self.full_path,
+            in_panchromatic_image=pan_img,
+            pansharpening_type='Gram-Schmidt'
         )
         Delete(composed_img)
     

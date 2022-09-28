@@ -144,4 +144,9 @@ class NoCbersCredentials(Error):
     def __init__(self, message = ''):
         self.message = f'Não foi possível encontrar credenciais do CBERS.\n{message}'
         super().__init__(self.message)
-        
+
+class NoAvailableImageOnPeriod(Error):
+
+    def __init__(self, tiles = [], period = 30):
+        self.message = f'Não foi possível encontrar umagens disponíveis para a área de interesse no período de {period} dias.\nTiles selecionados: {tiles}'
+        super().__init__(self.message)

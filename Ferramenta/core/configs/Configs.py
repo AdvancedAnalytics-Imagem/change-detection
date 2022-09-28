@@ -11,7 +11,7 @@ from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.MosaicDataset import MosaicDataset
 from core.libs.Base import BasePath
-from core.libs.ErrorManager import VariablesLoadingError
+from core.libs.CustomExceptions import VariablesLoadingError
 
 
 class Configs(BasePath):

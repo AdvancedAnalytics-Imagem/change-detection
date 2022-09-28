@@ -8,7 +8,7 @@ from arcpy.management import AddRastersToMosaicDataset
 from core._logs import *
 from core.libs.Base import load_path_and_name, prevent_server_error
 from core.libs.BaseDBPath import BaseDBPath
-from core.libs.ErrorManager import MosaicDatasetError
+from core.libs.CustomExceptions import MosaicDatasetError
 from core.instances.Feature import Feature
 from .Database import Database, wrap_on_database_editing
 

@@ -4,7 +4,7 @@
 from arcpy import Extent, ListTransformations, SpatialReference
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from core._constants import *
-from core.libs.ErrorManager import NotInADatabase, SavingEditingSessionError
+from core.libs.CustomExceptions import NotInADatabase, SavingEditingSessionError
 
 from .Database import Database
 

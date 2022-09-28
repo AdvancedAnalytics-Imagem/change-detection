@@ -24,7 +24,7 @@ from core._logs import *
 from core.libs.Base import load_path_and_name
 from core.libs.BaseDBPath import BaseDBPath
 from core.libs.Enums import FieldType
-from core.libs.ErrorManager import (DatabaseInsertionError, MaxFailuresError,
+from core.libs.CustomExceptions import (DatabaseInsertionError, MaxFailuresError,
                                     UnexistingFeatureError)
 from core.ml_models.ImageClassifier import BaseImageClassifier
 from nbformat import ValidationError
@@ -578,7 +578,7 @@ class Feature(BaseDBPath, CursorManager):
             expression=f"func('{field_value}', '{field_type}')"
             code_block="""def func(value, type):
                     if type == 'DATE':
-                        return time.strftime('%Y-%m-%d %H:%M:%S')
+                        return datetime.strptime(value, '%Y-%m-%d')
                     if type == 'SHORT':
                         return int(value)
                     return value"""

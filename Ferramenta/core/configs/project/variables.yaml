@@ -1,19 +1,20 @@
 #* Polígono da área de interesse (feature class, .shp)
-target_area: ""
+target_area: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\area_de_interesse.shp"
 #* Sensores para classificação: ["CBERS", "SENTINEL2"]
-sensor: "SENTINEL2"
+# sensor: "SENTINEL2"
+sensor: "CBERS"
 #* Tabelas de destino dos resultados da classificação
-change_detection_dest: ""
-current_classification_dest: ""
-historic_classification_dest: ""
+change_detection_dest: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\Mudanca"
+current_classification_dest: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\Atual"
+historic_classification_dest: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\Hist"
 #* Pasta de armazenamento das imagens finais
-image_storage: ""
+image_storage: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\imagens"
 #* Mosaic dataset de destino das imagens finais (Caso mosaicadas e clipadas)
-output_mosaic_dataset_current: ""
-output_mosaic_dataset_historic: ""
+output_mosaic_dataset_current: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\Atual"
+output_mosaic_dataset_historic: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\Historica"
 #* Pastas temporárias
-temp_dir: ""
-download_storage: ""
+temp_dir: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\temp_folder"
+download_storage: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\downloads"
 #* Caso True, arquivos temporários serão deletados ao fim do processamento
 delete_temp_files: False
 #* Caso True, arquivos temporários serão deletados enquanto o processamento ocorre
@@ -31,4 +32,7 @@ n_cores: 0
 #* Parâmetros de Execução
 debug: True
 use_arcpy_append: True
-
+#* Período de dias de busca por imagens
+days_period: Null # Caso não informado, por padrão serão utilizados os períodos de cada sensor (30 dias - Sentinel2, 60 dias - CBERS)
+#* Data máxima de busca
+max_date: Null # Caso não informado, por padrão a data máxima será o momento atual

@@ -13,7 +13,7 @@ from core.libs.ProgressTracking import ProgressTracker
 from requests.exceptions import ConnectionError
 from sentinelsat.exceptions import ServerError as SetinelServerError
 
-from .ErrorManager import (FolderAccessError, InvalidPathError,
+from .CustomExceptions import (FolderAccessError, InvalidPathError,
                            MaxFailuresError, UnexistingFeatureError)
 
 

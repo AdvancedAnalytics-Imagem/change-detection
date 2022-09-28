@@ -12,7 +12,7 @@ from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import BaseImageClassifier
-from core.libs.ErrorManager import InvalidMLClassifierError
+from core.libs.CustomExceptions import InvalidMLClassifierError
 
 
 def load_arcgis_variables(variables_obj: Configs) -> Configs:

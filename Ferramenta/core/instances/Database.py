@@ -10,7 +10,7 @@ from arcpy.da import Editor
 from core._constants import *
 from core._logs import *
 from core.libs.Base import BasePath, ProgressTracker, load_path_and_name
-from core.libs.ErrorManager import (SavingEditingSessionError,
+from core.libs.CustomExceptions import (SavingEditingSessionError,
                                     UnexistingFeatureDatasetError,
                                     UnexistingGDBConnectionError,
                                     UnexistingSDEConnectionError)

@@ -15,7 +15,7 @@ from core.instances.Images import Image
 from core.instances.MosaicDataset import MosaicDataset
 from core.libs.BaseProperties import BaseProperties
 from core.ml_models.ImageClassifier import BaseImageClassifier
-from core.libs.ErrorManager import InvalidMLClassifierError
+from core.libs.CustomExceptions import InvalidMLClassifierError
 
 from AppendResults import AppendResults
 
@@ -97,13 +97,23 @@ def load_arcgis_variables(variables_obj):
             if Exists(ml_model) and (ml_model.endswith('.dlpk') or ml_model.endswith('.emd')):
                 os.environ['ML_MODEL'] = ml_model
             else:
-                aprint(f'Não foi possível encontrar o modelo de deep learning {ml_model}')
+                aprint(f'Modelo de deep learning não foi especificado, o modelo padrão será utilizado.')
 
         sensor = GetParameterAsText(16).upper()
         if sensor and sensor in ['SENTINEL2', 'CBERS']:
             variables_obj.sensor = sensor
             aprint(f'Processando imagens do sensor {sensor}')
-            
+        
+        #* Data máxima da busca
+        max_date = GetParameter(17)
+        if max_date:
+            variables_obj.max_date = max_date
+
+        #* Intervalo de dias anteriores
+        days_period = GetParameter(18)
+        if days_period:
+            variables_obj.days_period = days_period
+
     return variables_obj.init_base_variables()
 
 VARIABLES = load_arcgis_variables(variables_obj=Configs())
@@ -119,7 +129,9 @@ def get_images():
         area_of_interest=VARIABLES.target_area,
         results_output_location=BASE_CONFIGS.temp_db,
         max_cloud_coverage=VARIABLES.max_cloud_coverage,
-        compose_as_single_image=VARIABLES.compose_as_single_image # Caso negativo, os tiles não serão mosaicados em uma única imagem, isto impossibilita o append em um Mosaic Dataset
+        compose_as_single_image=VARIABLES.compose_as_single_image, # Caso negativo, os tiles não serão mosaicados em uma única imagem, isto impossibilita o append em um Mosaic Dataset
+        days_period=VARIABLES.days_period,
+        max_date=VARIABLES.max_date
     )
     return images
 
@@ -196,19 +208,19 @@ def main():
         image=images.current_image,
         ml_model=images.service.ml_model
     )
-    VARIABLES.current_image_date = images.current_image.date_created
+    VARIABLES.current_image_date = images.current_image.date_created.date()
 
     VARIABLES.historic_classification = classify_image(
         image=images.historic_image,
         ml_model=images.service.ml_model
     )
-    VARIABLES.historic_image_date = images.historic_image.date_created
+    VARIABLES.historic_image_date = images.historic_image.date_created.date()
 
     VARIABLES.change_detection = detect_changes(
         current=VARIABLES.current_classification,
         historic=VARIABLES.historic_classification
     )
-    VARIABLES.processing_date = datetime.now()
+    VARIABLES.processing_date = datetime.now().date()
 
     AppendResults(variables=VARIABLES, configs=BASE_CONFIGS).append_data()
 
