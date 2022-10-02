@@ -149,7 +149,7 @@ class SentinelImage(BaseSateliteImage):
         self.datetime = datetime.strptime(title_parts[6], format('%Y%m%dT%H%M%S'))
         self.date = self.datetime.date()
 
-    # ---- Funções para buscar informações do nodata_pixel_percentage ----
+    # ---- Methods for acquiring nodata_pixel_percentage data ----
     @property
     def nodata_pixel_percentage(self) -> float:
         if not self.nodata_pixel_percentage_str: self._fetch_s2_qi_info()
@@ -478,4 +478,3 @@ class Image(BaseDBPath):
             field_name=classifier.class_field
         )
         return feature
-

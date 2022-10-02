@@ -159,6 +159,7 @@ class Cbers(BaseImageAcquisitionService):
         end_date = max_date + timedelta(days=1)
         area = area_of_interest.bounding_box()
         
+        aprint(f'> Buscando imagens do sensor CBERS entre {begin_date.date()} e {end_date.date()}')
         identified_images = self._query_images(area=area, begin_date=begin_date, end_date=end_date)
         self.available_images = {}
         for image_feature in identified_images:
@@ -270,6 +271,8 @@ class Sentinel2(BaseImageAcquisitionService):
         aoi_geojson = area_of_interest.geojson_geometry()
         area = geojson_to_wkt(aoi_geojson)
         
+        aprint(f'> Buscando imagens do sensor Sentinel2 entre {begin_date.date()} e {end_date.date()}')
+        # Sentinel has multiple APIs, so this loops through it and pre loads credentials
         for api in self.apis:
             identified_images = self._query_images(api=api, area=area, begin_date=begin_date, end_date=end_date)
             self.available_images = {}

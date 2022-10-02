@@ -1,8 +1,48 @@
 #* Polígono da área de interesse (feature class, .shp)
+target_area: ""
+#* Sensores para classificação: ["CBERS", "SENTINEL2"]
+sensor: "SENTINEL2"
+# sensor: "CBERS"
+#* Tabelas de destino dos resultados da classificação
+change_detection_dest: ""
+current_classification_dest: ""
+historic_classification_dest: ""
+#* Pasta de armazenamento das imagens finais
+image_storage: ""
+#* Mosaic dataset de destino das imagens finais (Caso mosaicadas e clipadas)
+output_mosaic_dataset_current: ""
+output_mosaic_dataset_historic: ""
+#* Pastas temporárias
+temp_dir: ""
+download_storage: ""
+#* Caso True, arquivos temporários serão deletados ao fim do processamento
+delete_temp_files: False
+#* Caso True, arquivos temporários serão deletados enquanto o processamento ocorre
+delete_temp_files_while_processing: False
+#* Parametros de Classificação
+max_cloud_coverage: 20
+#* Por padrão, as imagens dos tiles serão compostas e clipadas conforme a máscara da área de interesse
+#* Caso este parâmetro seja False, os tiles serão processados em um Mosaic Dataset
+compose_as_single_image: True
+classification_arguments: "padding 70;batch_size 2;predict_background True;tile_size 256"
+ml_model: ""
+classification_processor: "CPU"
+#* Caso o número de cores a serem utilizados seja 0, todos os cores disponíveis serão utilizados
+n_cores: 0
+#* Parâmetros de Execução
+debug: True
+use_arcpy_append: True
+#* Período de dias de busca por imagens
+#* Valores padrão: 30 dias - Sentinel2, 60 dias - CBERS
+days_period: Null # Caso não informado, os valores padrão serão utilizados
+#* Data máxima de busca 'AAAA-MM-DD'
+max_date: Null # Caso não informado, por padrão a data máxima será o momento atual
+
+#* Polígono da área de interesse (feature class, .shp)
 target_area: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\area_de_interesse.shp"
 #* Sensores para classificação: ["CBERS", "SENTINEL2"]
-# sensor: "SENTINEL2"
-sensor: "CBERS"
+sensor: "SENTINEL2"
+# sensor: "CBERS"
 #* Tabelas de destino dos resultados da classificação
 change_detection_dest: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\Mudanca"
 current_classification_dest: "C:\\Projects\\Imagem\\CAESB\\ChangeDetection\\DatabaseConnection\\REPLICA_sqlprod04.gdb\\Atual"
@@ -34,5 +74,5 @@ debug: True
 use_arcpy_append: True
 #* Período de dias de busca por imagens
 days_period: Null # Caso não informado, por padrão serão utilizados os períodos de cada sensor (30 dias - Sentinel2, 60 dias - CBERS)
-#* Data máxima de busca
+#* Data máxima de busca 'AAAA-MM-DD'
 max_date: Null # Caso não informado, por padrão a data máxima será o momento atual

@@ -1,6 +1,5 @@
 *.zip
 *.gdb
-!*ServicesSupportData.gdb
 *.lock
 *.dlpk
 .vscode/settings.json
@@ -26,3 +25,8 @@ __pycache__
 Ferramenta/core/configs/project/variables.json
 Ferramenta/core/configs/project/authentication.json
 *.log
+
+# Specific Allowances
+!*ServicesSupportData.gdb
+!*model_cbers.dlpk
+!*model_sentinel2.dlpk

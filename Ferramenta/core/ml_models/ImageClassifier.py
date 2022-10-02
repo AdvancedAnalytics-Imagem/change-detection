@@ -39,7 +39,7 @@ class BaseImageClassifier(BaseProperties):
         return [id for id in self.Classes]
 
 class Sentinel2ImageClassifier(BaseImageClassifier):
-    ml_model_name: str = 'sentinel_n2'
+    ml_model_name: str = 'sentinel2'
 
     class Classes(ExtendedEnum):
         AREA_ANTROPICA = ClassAttribute(60, "Área Antrópicas Não Agrícolas")
@@ -54,7 +54,7 @@ class Sentinel2ImageClassifier(BaseImageClassifier):
         super().__init__(path=self.get_ml_model(target=self.ml_model_name))
 
 class CbersImageClassifier(BaseImageClassifier):
-    ml_model_name: str = 'cbers_n2'
+    ml_model_name: str = 'cbers'
 
     class Classes(ExtendedEnum):
         AREA_ANTROPICA = ClassAttribute(60, "Área Antrópicas Não Agrícolas")

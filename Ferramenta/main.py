@@ -232,7 +232,6 @@ if __name__ == '__main__':
             \n2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}
             \n3. Arquivos baixados serão salvos em: {BASE_CONFIGS.download_storage}
             \n4. Imagens finais serão salvas em: {BASE_CONFIGS.image_storage}
-            \nIniciando Execução...
             \n_ _________________ _\n'''
     )
     main()

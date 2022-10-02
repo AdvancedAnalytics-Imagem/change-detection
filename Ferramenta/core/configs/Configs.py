@@ -2,6 +2,7 @@
 #!/usr/bin/python
 import json
 import os
+from datetime import date
 
 import yaml
 from arcpy import GetParameter, GetParameterAsText, GetParameterInfo
@@ -72,6 +73,10 @@ class Configs(BasePath):
         if hasattr(self, 'ml_model') and self.ml_model:
             if not os.environ.get('ML_MODEL'):
                 os.environ['ML_MODEL'] = self.ml_model
+
+        if hasattr(self, 'max_date') and self.max_date:
+            if not isinstance(self.max_date, date):
+                self.max_date = datetime.strptime(self.max_date, '%Y-%m-%d')
 
         return self
         

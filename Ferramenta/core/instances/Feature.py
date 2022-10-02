@@ -578,7 +578,10 @@ class Feature(BaseDBPath, CursorManager):
             expression=f"func('{field_value}', '{field_type}')"
             code_block="""def func(value, type):
                     if type == 'DATE':
-                        return datetime.strptime(value, '%Y-%m-%d')
+                        try:
+                            return datetime.datetime.strptime(value, '%Y-%m-%d')
+                        except:
+                            return datetime.strptime(value, '%Y-%m-%d')
                     if type == 'SHORT':
                         return int(value)
                     return value"""
