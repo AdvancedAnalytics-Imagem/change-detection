@@ -1,0 +1,21 @@
+#* Polígono da área de interesse (feature class, .shp)
+target_area: ""
+
+#* Sensores para classificação: ["CBERS", "SENTINEL2"]
+sensor: "SENTINEL2"
+
+#* Parametros de Classificação
+max_cloud_coverage: 20
+
+#* Por padrão, as imagens dos tiles serão compostas e clipadas conforme a máscara da área de interesse
+#* Caso este parâmetro seja False, os tiles serão processados em um Mosaic Dataset
+compose_as_single_image: True
+classification_arguments: "padding 70;batch_size 2;predict_background True;tile_size 256"
+ml_model: ""
+
+#* Período de dias de busca por imagens
+#* Valores padrão: 30 dias - Sentinel2, 60 dias - CBERS
+days_period: Null # Caso não informado, os valores padrão serão utilizados
+
+#* Data máxima de busca 'AAAA-MM-DD'
+max_date: Null # Caso não informado, por padrão a data máxima será o momento atual
