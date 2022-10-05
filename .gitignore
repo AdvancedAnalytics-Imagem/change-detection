@@ -17,6 +17,7 @@ Dados
 *.sbn
 *.prj
 *.cpg
+.idea
 env
 temp
 downloads
