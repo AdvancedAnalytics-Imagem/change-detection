@@ -38,6 +38,9 @@ class BaseSateliteImage(BaseDBPath):
     uuid: str = ''
     cloudcoverpercentage: float = 1.0
     
+    def __repr__(self):
+        return f'{self.tileid}_{self.date}'
+        
     def get(self, property: str):
         return self.properties.get(property)
 
@@ -55,7 +58,7 @@ class BaseSateliteImage(BaseDBPath):
             Returns:
                 float: Percentage -> 10.5 (Originates from cloudcoverpercentage that stores the percentage in decimal form -> 0.105)
         """
-        return self.cloudcoverpercentage*100
+        return self.cloudcoverpercentage
 
     def download_image(self, *args, **kwargs) -> None:
         """Downloads each band on the image and composes all as one, and deletes the original download folder"""
