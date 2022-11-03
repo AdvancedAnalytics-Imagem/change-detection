@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/python
 import concurrent.futures
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from enum import Enum, unique
 
 from arcpy import Exists
 from core._constants import *
 from core.instances.Database import Database
-from core.libs.CustomExceptions import NoAvailableImageOnPeriod
 from core.instances.Feature import Feature
 from core.instances.Images import Image
 from core.libs.BaseProperties import BaseProperties
+from core.libs.CustomExceptions import NoAvailableImageOnPeriod
 from core.services.SateliteImagery.ImageryServices import (
     BaseImageAcquisitionService, Cbers, Sentinel2)
 
@@ -119,8 +120,30 @@ class ImageAcquisition(BaseProperties):
         )
 
         images = {}
+        futures = []
+
+        # with ProcessPoolExecutor(max_workers=self.n_cores) as executor:
+        #     for tile in self.intersecting_tiles:
+        #         futures.append(
+        #             executor.submit(
+        #                 self.service.get_best_available_images_for_tile,
+        #                 tile
+        #             )
+        #         )
+
+        #     for response in as_completed(futures):
+        #         result = response.result()
+        #         tile_images = result.get('images')
+        #         tile = result.get('tile')
+        #         if tile_images:
+        #             for tile_image in tile_images:
+        #                 images[tile_image.datetime] = [*images.get(tile_image.datetime,[]), tile_image]
+        #         self.progress_tracker.report_progress(add_progress=True)
+
         for tile in self.intersecting_tiles:
-            tile_images = self.service.get_best_available_images_for_tile(tile_name=tile, area_of_interest=area_of_interest)
+            result = self.service.get_best_available_images_for_tile(tile_name=tile, area_of_interest=area_of_interest)
+            tile_images = result.get('images')
+            tile = result.get('tile')
             if tile_images:
                 for tile_image in tile_images:
                     images[tile_image.datetime] = [*images.get(tile_image.datetime,[]), tile_image]
@@ -128,6 +151,7 @@ class ImageAcquisition(BaseProperties):
 
         composition_images = []
         [composition_images.extend(i) for i in images.values()]
+
         if not composition_images:
             raise NoAvailableImageOnPeriod(
                 tiles=self.service.tile_names,

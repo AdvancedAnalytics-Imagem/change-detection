@@ -30,3 +30,6 @@ Ferramenta/core/configs/project/authentication.json
 !*ServicesSupportData.gdb
 !*model_cbers.dlpk
 !*model_sentinel2.dlpk
+Ferramenta/core/ml_models/model_sentinel2.dlpk
+Ferramenta/core/ml_models/model_cbers.dlpk
+Ferramenta/core/configs/project/variables.yaml

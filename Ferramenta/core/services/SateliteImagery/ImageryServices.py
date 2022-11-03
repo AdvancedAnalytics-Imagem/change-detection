@@ -301,18 +301,18 @@ class Sentinel2(BaseImageAcquisitionService):
             Returns:
                 Image -> Most recent available Image instance,
         """
-        # filtered_list_of_images = self._filter_by_nodata_threshold(images=list_of_images, threshold=self._scene_min_coverage_threshold)
         if list_of_images:
             filtered_list_of_images = self._filter_by_cloud_coverage(images=list_of_images, threshold=self.max_cloud_coverage)
-            return self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, days_period=days_period)
-
+            image = self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, days_period=days_period)
+            if image.nodata_pixel_percentage > 50:
+                return image
+        
         return self._combine_lower_coverage_tile_image(images=list_of_images, max_date=max_date, days_period=days_period)
 
     def _combine_lower_coverage_tile_image(self, images: list, max_date: datetime = None, days_period: datetime = None) -> list:
-        # filtered_list_of_images = self._filter_by_nodata_threshold(images=images, threshold=self._combined_scene_min_coverage_threshold)
         filtered_list_of_images = self._filter_by_cloud_coverage(images=images, threshold=self.max_cloud_coverage)
 
-        if not filtered_list_of_images or len(filtered_list_of_images) < 2: return
+        if not filtered_list_of_images or len(filtered_list_of_images) < 2: return filtered_list_of_images
 
         first_image = self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, days_period=days_period)
         second_image = self._get_most_recent_image(images=filtered_list_of_images, max_date=first_image.datetime, days_period=days_period)
@@ -351,4 +351,4 @@ class Sentinel2(BaseImageAcquisitionService):
         ) for image in best_available_image]
 
         # List of best images Instances (already downloaded)
-        return best_available_image
+        return {'images':best_available_image, 'tile':tile_name}
