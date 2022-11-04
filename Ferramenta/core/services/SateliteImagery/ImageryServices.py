@@ -301,14 +301,30 @@ class Sentinel2(BaseImageAcquisitionService):
             Returns:
                 Image -> Most recent available Image instance,
         """
-        if list_of_images:
-            filtered_list_of_images = self._filter_by_cloud_coverage(images=list_of_images, threshold=self.max_cloud_coverage)
-            image = self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, days_period=days_period)
-            if image.nodata_pixel_percentage > 50:
+        response = []
+        coverage = 0
+        list_of_images_ordered_by_date = self.order_images_by_date(list_of_images)
+        for image in list_of_images_ordered_by_date:
+            image_coverage = 100 - image.nodata_pixel_percentage
+            if image_coverage > 98.5:
                 return image
+            
+            response.append(image)
+            coverage += image_coverage
+            if coverage > 170:
+                return response
         
-        return self._combine_lower_coverage_tile_image(images=list_of_images, max_date=max_date, days_period=days_period)
+        return response
+        # return self._combine_lower_coverage_tile_image(images=list_of_images, max_date=max_date, days_period=days_period)
 
+    def order_images_by_date(self, list_of_images: list) -> list[Image]:
+        images = {}
+        for image in list_of_images:
+            images[image.date] = image
+        dates = list(images.keys())
+        dates.sort()
+        return [images.get(k) for k in dates]
+    
     def _combine_lower_coverage_tile_image(self, images: list, max_date: datetime = None, days_period: datetime = None) -> list:
         filtered_list_of_images = self._filter_by_cloud_coverage(images=images, threshold=self.max_cloud_coverage)
 
