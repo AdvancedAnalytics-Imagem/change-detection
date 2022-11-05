@@ -18,6 +18,7 @@ Dados
 *.prj
 *.cpg
 env
+_venv
 temp
 downloads
 __pycache__
