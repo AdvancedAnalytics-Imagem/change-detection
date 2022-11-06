@@ -68,9 +68,9 @@ def prevent_server_error(wrapped_function):
     return reattempt_execution
 
 class BasePath:
-    debug = False
-    batch_size = 200000
-    regular_sleep_time_seconds = 5
+    debug: True = False
+    batch_size: int = 200000
+    regular_sleep_time_seconds: int = 5
     progress_tracker: ProgressTracker = ProgressTracker()
     path:str = ''
     name: str = ''
@@ -128,7 +128,11 @@ class BasePath:
             Returns:
                 str: Compiled folder path string
         """
-        if not os.path.exists(path) and not Exists(path):
+        if self.is_url(path=path):
+            self.path = path
+            return path
+             
+        if not os.path.exists(path) or not Exists(path):
             try:
                 os.makedirs(path)
             except Exception as e:
@@ -148,6 +152,16 @@ class BasePath:
         self.path = path
         return path
 
+    @property
+    def url(self) -> bool:
+        if self.is_url():
+            return self.full_path
+        
+    def is_url(self, path: str = None) -> bool:
+        if not path: path = self.path
+        if 'http:' in path or 'https:' in path:
+            return True
+    
     @staticmethod
     def get_list_of_valid_paths(items) -> list:
         valid_paths = []
