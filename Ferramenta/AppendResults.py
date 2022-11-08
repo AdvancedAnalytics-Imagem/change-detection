@@ -118,8 +118,8 @@ class AppendResults:
         destination.append_dataset(
             origin=origin,
             extra_constant_values={
-                'data':self.variables.current_image_date,
-                'data_proc':self.variables.processing_date,
+                'dataimagem':self.variables.current_image_date,
+                'dataprocessamento':self.variables.processing_date,
                 'sensor':self.variables.sensor,
                 'tiles':tile_names
             }
@@ -130,8 +130,8 @@ class AppendResults:
         destination.append_dataset(
             origin=origin,
             extra_constant_values={
-                'data':self.variables.historic_image_date,
-                'data_proc':self.variables.processing_date,
+                'dataimagem':self.variables.historic_image_date,
+                'dataprocessamento':self.variables.processing_date,
                 'sensor':self.variables.sensor,
                 'tiles':tile_names
             }
