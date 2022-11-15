@@ -66,7 +66,7 @@ class BaseImageAcquisitionService(BaseProperties):
     def query_available_images(self, *args, **kwargs) -> dict:
         pass
 
-    def get_best_available_images_for_tile(self, *args, **kwargs) -> list:
+    def get_best_available_images_for_tile(self, *args, **kwargs) -> dict:
         pass
     
     def _get_most_recent_image(self, images: list, max_date: datetime = None, days_period: datetime = None) -> SentinelImage:
@@ -190,7 +190,7 @@ class Cbers(BaseImageAcquisitionService):
     def _get_best_possile_images(self, list_of_images: list, max_date: datetime = None, days_period: datetime = None) -> list:
         return self._get_most_recent_image(images=list_of_images, max_date=max_date, days_period=days_period)
 
-    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None) -> list:
+    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None) -> dict:
         if not self.available_images:
             if not area_of_interest:
                 raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
@@ -315,24 +315,16 @@ class Sentinel2(BaseImageAcquisitionService):
                 return response
         
         return response
-        # return self._combine_lower_coverage_tile_image(images=list_of_images, max_date=max_date, days_period=days_period)
 
-    def order_images_by_date(self, list_of_images: list) -> list[Image]:
+    def order_images_by_date(self, list_of_images: list) -> list:
         images = {}
+        if not list_of_images:
+            return []
         for image in list_of_images:
             images[image.date] = image
         dates = list(images.keys())
-        dates.sort()
+        dates.sort(reverse=True)
         return [images.get(k) for k in dates]
-    
-    def _combine_lower_coverage_tile_image(self, images: list, max_date: datetime = None, days_period: datetime = None) -> list:
-        filtered_list_of_images = self._filter_by_cloud_coverage(images=images, threshold=self.max_cloud_coverage)
-
-        if not filtered_list_of_images or len(filtered_list_of_images) < 2: return filtered_list_of_images
-
-        first_image = self._get_most_recent_image(images=filtered_list_of_images, max_date=max_date, days_period=days_period)
-        second_image = self._get_most_recent_image(images=filtered_list_of_images, max_date=first_image.datetime, days_period=days_period)
-        return [first_image, second_image]
 
     @staticmethod
     def _filter_by_cloud_coverage(images: list, threshold: int) -> list:
@@ -343,7 +335,7 @@ class Sentinel2(BaseImageAcquisitionService):
         if not images: return []
         return [image for image in images if image.nodata_pixel_percentage < threshold]
 
-    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None) -> list:
+    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None) -> dict:
         if not self.available_images:
             if not area_of_interest:
                 raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
@@ -358,7 +350,7 @@ class Sentinel2(BaseImageAcquisitionService):
 
         if not best_available_image:
             aprint(f'Não existe imagem disponível para o tile {tile_name}.', level=LogLevels.ERROR)
-            return []
+            return {}
 
         if not isinstance(best_available_image, list): best_available_image = [best_available_image]
         [image.download_image(

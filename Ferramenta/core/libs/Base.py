@@ -57,13 +57,14 @@ def prevent_server_error(wrapped_function):
                 if failed_attempts > MaxFailuresError.max_failures:
                     raise MaxFailuresError(wrapped_function.__name__, attempts=failed_attempts)
                 if isinstance(e, SetinelServerError):
-                    aprint(f'Sentinel Server error:\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds} segundos...\n Erro: {e}', level=LogLevels.WARNING)
+                    aprint(f'Sentinel Server error:\n Erro: {e}\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds} segundos...', level=LogLevels.WARNING)
                     failed_attempts += 1
                 elif isinstance(e, ConnectionError):
-                    aprint(f'CBERS Server error:\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds} segundos...\n Erro: {e}', level=LogLevels.WARNING)
+                    aprint(f'CBERS Server error:\n Erro: {e}\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds} segundos...', level=LogLevels.WARNING)
                     failed_attempts += 1
                 else:
-                    raise(e)
+                    aprint(f'Erro de API não reconhecido:\n Erro: {e}\nReconectando em {failed_attempts*MaxFailuresError.wait_time_seconds} segundos...', level=LogLevels.WARNING)
+                    failed_attempts += 1
                 time.sleep(failed_attempts*MaxFailuresError.wait_time_seconds)
     return reattempt_execution
 
