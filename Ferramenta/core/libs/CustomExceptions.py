@@ -9,13 +9,16 @@ class Error(Exception):
     interrupt_execution: bool = True
 
     """Base class for other exceptions"""
-    def __init__(self, message: str):
+    def __init__(self, message: str, log_level: LogLevels = None):
+        if not log_level:
+            log_level = LogLevels.INFO
+
         if self.interrupt_execution:
             aprint(message, level=LogLevels.CRITICAL)
             aprint('Interrompendo execução', level=LogLevels.WARNING)
             sys.exit()
         else:
-            aprint(message, level=LogLevels.INFO)
+            aprint(message, level=log_level)
 
 class FolderAccessError(Error):
     """Exception for an unaccessible folder"""
@@ -150,3 +153,13 @@ class NoAvailableImageOnPeriod(Error):
     def __init__(self, tiles = [], period = 30):
         self.message = f'Não foi possível encontrar umagens disponíveis para a área de interesse no período de {period} dias.\nTiles selecionados: {tiles}'
         super().__init__(self.message)
+
+class PansharpCustomException(Error):
+    interrupt_execution = False
+    
+class NoImageFoundForTile(Error):
+    interrupt_execution = False
+    
+    def __init__(self, tile: str):
+        message = f'\n      > Imagem indisponível - Tile: {tile}'
+        super().__init__(message, log_level=LogLevels.WARNING)

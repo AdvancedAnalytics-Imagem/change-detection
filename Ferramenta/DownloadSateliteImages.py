@@ -108,13 +108,14 @@ class DownloadSateliteImages:
             new_image = self.add_image_to_mosaic_dataset(
                 image=image,
                 location=self.configs.image_storage,
-                mosaic_dataset=self.variables.output_mosaic_dataset
+                mosaic_dataset=self.variables.output_mosaic_dataset,
+                sensor=self.configs.sensor
             )
             return new_image
         return image
         
-    def add_image_to_mosaic_dataset(self, image: Image, location: Database, mosaic_dataset: MosaicDataset, satelite: str = 'Sentinel2'):
-        output_name = f'{satelite}_{image.date_created.strftime("%Y%m%d")}'
+    def add_image_to_mosaic_dataset(self, image: Image, location: Database, mosaic_dataset: MosaicDataset, sensor: str = 'Sentinel2'):
+        output_name = f'{sensor}_{image.date_created.strftime("%Y%m%d")}'
         new_image = Image(
             path=image.copy_image(
                 delete_source=False,

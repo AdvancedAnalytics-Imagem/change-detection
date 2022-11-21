@@ -226,7 +226,13 @@ class Feature(BaseDBPath, CursorManager):
     def select_by_attributes(self, where_clause: str) -> dict:
         return SelectLayerByAttribute_management(in_layer_or_view=self.full_path, where_clause=where_clause)
 
-    def select_by_location(self, intersecting_feature: str, distance: int = None, overlap_type: str = 'INTERSECT') -> dict:
+    def select_by_location(
+        self,
+        intersecting_feature: str,
+        distance: int = None,
+        overlap_type: str = 'INTERSECT',
+        in_memory: bool = False
+    ) -> dict:
         """Returns and selects current feature by location, based on intersection with an intersecting feature
             Args:
                 intersecting_feature (str): Feature that limits the selection of the current feature
@@ -239,7 +245,7 @@ class Feature(BaseDBPath, CursorManager):
             if overlap_type not in _REQUIRED_OVERLAP_TYPE_FOR_DISTANCE:
                 overlap_type = 'INTERSECT'
                 distance = None
-
+        
         intersecting_feature_path = ''
         if isinstance(intersecting_feature, str):
             intersecting_feature_path = intersecting_feature
@@ -257,7 +263,13 @@ class Feature(BaseDBPath, CursorManager):
         )
         
         feature_name = self.get_unique_name(path=self.temp_db, name=os.path.basename(self.name))
-        return CopyFeatures_management(selected_features, os.path.join(self.temp_db.full_path, feature_name))[0]
+        
+        if in_memory:
+            output_selected_feature = os.path.join('IN_MEMORY', feature_name)
+        else:
+            output_selected_feature = os.path.join(self.temp_db.full_path, feature_name)
+
+        return CopyFeatures_management(selected_features, output_selected_feature)[0]
 
     def format_feature_field_structure(self, data: list, fields: list = [], format: str = tuple, field_map: dict = {}):
         """Formats data according to feature object

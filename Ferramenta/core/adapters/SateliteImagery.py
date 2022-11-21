@@ -7,6 +7,7 @@ from enum import Enum, unique
 
 from arcpy import Exists
 from core._constants import *
+from core._logs import *
 from core.instances.Database import Database
 from core.instances.Feature import Feature
 from core.instances.Images import Image
@@ -55,9 +56,10 @@ class ImageAcquisition(BaseProperties):
             max_date = self.now
         if not days_period:
             days_period = self.service._days_gap
-            
+        aprint(f' > Buscando Imagens Histórica e Atual\n    - Sensor: CBERS - Data máxima: {max_date} - Período: {days_period} dias')
+
         #* Current Image acquisition
-        current_image_name = f'Cur_Img_{self.today_str}'
+        current_image_name = f'Atual_{self.today_str}'
 
         self.current_image = self.get_composed_images_for_aoi(
             max_date=max_date,
@@ -70,7 +72,7 @@ class ImageAcquisition(BaseProperties):
         )
 
         #* Historic Image acquisition
-        historic_image_name = f'Hist_Image_{self.today_str}'
+        historic_image_name = f'Hist_{self.today_str}'
         min_search_date = self.current_image.date_created - timedelta(days=days_period)
         
         self.historic_image = self.get_composed_images_for_aoi(

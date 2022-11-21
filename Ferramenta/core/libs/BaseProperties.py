@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 #!/usr/bin/python
 import os
+import shutil
 
 from arcpy import Exists
 from arcpy.management import Delete
@@ -75,3 +76,10 @@ class BaseProperties(BasePath):
                     Delete(self.temp_db)
                 except Exception as e:
                     DeletionError(path=self.temp_db)
+        
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+            
+    @property
+    def sensor(self) -> str:
+        return os.environ.get('SENSOR', 'SENTINEL2')

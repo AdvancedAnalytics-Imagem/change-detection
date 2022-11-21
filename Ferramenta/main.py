@@ -20,7 +20,7 @@ from core.libs.CustomExceptions import InvalidMLClassifierError
 from AppendResults import AppendResults
 
 
-def load_arcgis_variables(variables_obj):
+def load_arcgis_variables(variables_obj: Configs):
     if len(GetParameterInfo())>0:
         variables_obj.debug = False
         variables_obj.arcgis_execution = True
@@ -92,10 +92,11 @@ def load_arcgis_variables(variables_obj):
         if delete_temp_files_while_processing:
             os.environ['DELETE_TEMP_FILES_WHILE_PROCESSING'] = 'True'
             
-        ml_model = GetParameter(15)
+        ml_model = GetParameterAsText(15)
         if ml_model:
-            if Exists(ml_model) and (ml_model.endswith('.dlpk') or ml_model.endswith('.emd')):
-                os.environ['ML_MODEL'] = ml_model
+            if Exists(ml_model):
+                if ml_model.endswith('.dlpk') or ml_model.endswith('.emd'):
+                    os.environ['ML_MODEL'] = ml_model
             else:
                 aprint(f'Modelo de deep learning não foi especificado, o modelo padrão será utilizado.')
 
@@ -120,7 +121,7 @@ VARIABLES = load_arcgis_variables(variables_obj=Configs())
 BASE_CONFIGS = BaseProperties()
 
 def get_images():
-    aprint(message='Iniciando Aquisição de Imagens', progress=True)
+    aprint(message='> Iniciando Aquisição de Imagens\n', progress=True)
     images = ImageAcquisition(
         service=VARIABLES.sensor,
         credentials=VARIABLES.credentials,
@@ -170,8 +171,8 @@ def detect_changes(current, historic):
     )
     return change_detection
 
-def add_image_to_mosaic_dataset(image: Image, location: Database, mosaic_dataset: MosaicDataset, satelite: str = 'Sentinel2'):
-    output_name = f'{satelite}_{image.date_created.strftime("%Y%m%d")}'
+def add_image_to_mosaic_dataset(image: Image, location: Database, mosaic_dataset: MosaicDataset, sensor: str = 'Sentinel2'):
+    output_name = f'{sensor}_{image.date_created.strftime("%Y%m%d")}'
     new_image = Image(
         path=image.copy_image(
             delete_source=False,
@@ -188,20 +189,21 @@ def add_image_to_mosaic_dataset(image: Image, location: Database, mosaic_dataset
     )
 
 def main():
-
     images = get_images()
 
     if hasattr(VARIABLES, 'output_mosaic_dataset_current') and VARIABLES.output_mosaic_dataset_current:
         add_image_to_mosaic_dataset(
             image=images.current_image,
             location=BASE_CONFIGS.image_storage,
-            mosaic_dataset=VARIABLES.output_mosaic_dataset_current
+            mosaic_dataset=VARIABLES.output_mosaic_dataset_current,
+            sensor=VARIABLES.sensor
         )
     if hasattr(VARIABLES, 'output_mosaic_dataset_historic') and VARIABLES.output_mosaic_dataset_historic:
         add_image_to_mosaic_dataset(
             image=images.historic_image,
             location=BASE_CONFIGS.image_storage,
-            mosaic_dataset=VARIABLES.output_mosaic_dataset_historic
+            mosaic_dataset=VARIABLES.output_mosaic_dataset_historic,
+            sensor=VARIABLES.sensor
         )
 
     VARIABLES.current_classification = classify_image(
@@ -227,12 +229,11 @@ def main():
 
 if __name__ == '__main__':
     aprint(
-        message=f'''
-            \n1. Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
-            \n2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}
-            \n3. Arquivos baixados serão salvos em: {BASE_CONFIGS.download_storage}
-            \n4. Imagens finais serão salvas em: {BASE_CONFIGS.image_storage}
-            \n_ _________________ _\n'''
+        message=f'''\n_ _________________ _\n
+    1. Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
+    2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}
+    3. Arquivos baixados serão salvos em: {BASE_CONFIGS.download_storage}
+    4. Imagens finais serão salvas em: {BASE_CONFIGS.image_storage}\n_ _________________ _\n'''
     )
     main()
 

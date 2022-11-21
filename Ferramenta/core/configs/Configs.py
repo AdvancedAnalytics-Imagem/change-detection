@@ -77,6 +77,10 @@ class Configs(BasePath):
         if hasattr(self, 'max_date') and self.max_date:
             if not isinstance(self.max_date, date):
                 self.max_date = datetime.strptime(self.max_date, '%Y-%m-%d')
+                
+        if hasattr(self, 'sensor') and self.sensor:
+            if not os.environ.get('SENSOR'):
+                os.environ['SENSOR'] = self.sensor
 
         return self
         

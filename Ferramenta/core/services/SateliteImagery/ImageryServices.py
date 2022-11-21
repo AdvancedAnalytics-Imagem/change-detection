@@ -2,7 +2,6 @@
 #!/usr/bin/python
 import json
 import os
-import time
 from collections import OrderedDict
 from datetime import date, datetime, timedelta
 from http import HTTPStatus
@@ -13,17 +12,17 @@ from core._constants import *
 from core._logs import *
 from core.instances.Database import Database
 from core.instances.Feature import Feature
-from core.instances.Images import (BaseSateliteImage, CbersImage, Image,
-                                   SentinelImage)
-from core.libs.Base import ProgressTracker, prevent_server_error
+from core.instances.Images import CbersImage, SentinelImage
+from core.libs.Base import prevent_server_error
 from core.libs.BaseProperties import BaseProperties
-from core.libs.CustomExceptions import NoBaseTilesLayerFound, NoCbersCredentials
+from core.libs.CustomExceptions import (NoBaseTilesLayerFound,
+                                        NoCbersCredentials,
+                                        NoImageFoundForTile)
 from core.ml_models.ImageClassifier import (BaseImageClassifier,
                                             CbersImageClassifier,
                                             Sentinel2ImageClassifier)
 from nbformat import ValidationError
-from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
-                         read_geojson)
+from sentinelsat import SentinelAPI, geojson_to_wkt
 
 
 class BaseImageAcquisitionService(BaseProperties):
@@ -60,16 +59,60 @@ class BaseImageAcquisitionService(BaseProperties):
             area_of_interest.select_by_attributes(where_clause=where_clause)
         if not self.tiles_layer:
             raise NoBaseTilesLayerFound()
-        self.selected_tiles = Feature(path=self.tiles_layer.select_by_location(intersecting_feature=area_of_interest))
+        self.selected_tiles = Feature(
+            path=self.tiles_layer.select_by_location(
+                intersecting_feature=area_of_interest,
+                in_memory=True
+            )
+        )
         return self.selected_tiles
 
     def query_available_images(self, *args, **kwargs) -> dict:
         pass
 
-    def get_best_available_images_for_tile(self, *args, **kwargs) -> dict:
-        pass
+    def get_best_available_images_for_tile(
+        self,
+        tile_name:str,
+        area_of_interest: Feature = None,
+        max_date: datetime = None,
+        days_period: int = None,
+        image_prefix: str = None
+    ) -> dict:
+        if not image_prefix:
+            image_prefix = f'{self.sensor[:2]}{self.sensor[-1]}'
+            
+        if not self.available_images:
+            if not area_of_interest:
+                raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
+            self.query_available_images(area_of_interest=area_of_interest, max_date=max_date, days_period=days_period)
+
+        available_tile_images = self.available_images.get(tile_name)
+        if not available_tile_images:
+            NoImageFoundForTile(tile_name)
+            return {}
+            
+        best_available_images = self._get_most_recent_image(
+            images=available_tile_images,
+            max_date=max_date,
+            days_period=days_period)
+
+        if not best_available_images:
+            NoImageFoundForTile(tile_name)
+            return {}
+
+        if not isinstance(best_available_images, list):
+            best_available_images = [best_available_images]
+
+        [image.download_image(
+            image_database=self.images_database,
+            output_name=f'{image_prefix}_{tile_name}'
+        ) for image in best_available_images]
+
+        # List of best images Instances (already downloaded)
+        return {'images':best_available_images, 'tile':tile_name}
     
     def _get_most_recent_image(self, images: list, max_date: datetime = None, days_period: datetime = None) -> SentinelImage:
+        if not images: return
         most_recent_image = None
         min_date = None
         if max_date:
@@ -82,7 +125,14 @@ class BaseImageAcquisitionService(BaseProperties):
             most_recent_image = image
         return most_recent_image
 
-
+    def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None, name_field: str = 'NAME') -> list:
+        if not self.selected_tiles:
+            self._select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
+        self.tile_names = [i[0] for i in SearchCursor(self.selected_tiles.full_path, [name_field])]
+        aprint(f'      > Tiles sendo processados: | {" | ".join(self.tile_names)} |')
+        return self.tile_names
+    
+    
 class Cbers(BaseImageAcquisitionService):
     _collections = [
         # {"name": "CBERS4A_WFI_L4_DN"},
@@ -100,12 +150,8 @@ class Cbers(BaseImageAcquisitionService):
     def ml_model(self) -> BaseImageClassifier:
         return CbersImageClassifier()
 
-    def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None) -> list:
-        if not self.selected_tiles:
-            self._select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
-        self.tile_names = [i[0] for i in SearchCursor(self.selected_tiles.full_path, ['PATH_ROW'])]
-        aprint(f'Tiles selecionados:\n{",".join(self.tile_names)}')
-        return self.tile_names
+    def get_selected_tiles_names(self, *args, **kwargs) -> list:
+        return super().get_selected_tiles_names(name_field='PATH_ROW', *args, **kwargs)
         
     @prevent_server_error
     def _query_images(self, area: str, begin_date: datetime, end_date: datetime) -> list:
@@ -159,7 +205,7 @@ class Cbers(BaseImageAcquisitionService):
         end_date = max_date + timedelta(days=1)
         area = area_of_interest.bounding_box()
         
-        aprint(f'> Buscando imagens do sensor CBERS entre {begin_date.date()} e {end_date.date()}')
+        aprint(f'      > Buscando imagens Disponíveis > CBERS - {begin_date.date()} a {end_date.date()}')
         identified_images = self._query_images(area=area, begin_date=begin_date, end_date=end_date)
         self.available_images = {}
         for image_feature in identified_images:
@@ -189,30 +235,6 @@ class Cbers(BaseImageAcquisitionService):
     
     def _get_best_possile_images(self, list_of_images: list, max_date: datetime = None, days_period: datetime = None) -> list:
         return self._get_most_recent_image(images=list_of_images, max_date=max_date, days_period=days_period)
-
-    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None) -> dict:
-        if not self.available_images:
-            if not area_of_interest:
-                raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
-            self.query_available_images(area_of_interest=area_of_interest, max_date=max_date, days_period=days_period)
-
-        best_available_image = self._get_best_possile_images(
-            list_of_images=self.available_images.get(tile_name,[]),
-            max_date=max_date,
-            days_period=days_period)
-
-        if not best_available_image:
-            aprint(f'Não foi possível encontrar imagem disponível para o tile {tile_name} no período de interesse.', level=LogLevels.WARNING)
-            return []
-
-        if not isinstance(best_available_image, list): best_available_image = [best_available_image]
-        [image.download_image(
-            image_database=self.images_database,
-            output_name=f'CBR_{tile_name}'
-        ) for image in best_available_image]
-
-        # List of best images Instances (already downloaded)
-        return best_available_image
 
 class Sentinel2(BaseImageAcquisitionService):
     _scene_min_coverage_threshold: float = 1.5
@@ -254,12 +276,8 @@ class Sentinel2(BaseImageAcquisitionService):
         products.update(api.query(**payload))
         return api.to_geojson(products).features
 
-    def get_selected_tiles_names(self, area_of_interest: Feature = None, where_clause: str = None) -> list:
-        if not self.selected_tiles:
-            self._select_tiles(area_of_interest=area_of_interest, where_clause=where_clause)
-        self.tile_names = [i[0] for i in SearchCursor(self.selected_tiles.full_path, ['NAME'])]
-        aprint(f'Tiles selecionados:\n{",".join(self.tile_names)}')
-        return self.tile_names
+    def get_selected_tiles_names(self, *args, **kwargs) -> list:
+        return super().get_selected_tiles_names(name_field='NAME', *args, **kwargs)
 
     def query_available_images(self, area_of_interest: Feature, max_date: datetime, days_period: int) -> dict:
         if not max_date: max_date = self.today
@@ -271,7 +289,7 @@ class Sentinel2(BaseImageAcquisitionService):
         aoi_geojson = area_of_interest.geojson_geometry()
         area = geojson_to_wkt(aoi_geojson)
         
-        aprint(f'> Buscando imagens do sensor Sentinel2 entre {begin_date.date()} e {end_date.date()}')
+        aprint(f'   > Sentinel2 - {begin_date.date()} a {end_date.date()}')
         # Sentinel has multiple APIs, so this loops through it and pre loads credentials
         for api in self.apis:
             identified_images = self._query_images(api=api, area=area, begin_date=begin_date, end_date=end_date)
@@ -306,7 +324,7 @@ class Sentinel2(BaseImageAcquisitionService):
         list_of_images_ordered_by_date = self.order_images_by_date(list_of_images)
         for image in list_of_images_ordered_by_date:
             image_coverage = 100 - image.nodata_pixel_percentage
-            if image_coverage > 98.5:
+            if image_coverage > 97:
                 return image
             
             response.append(image)
@@ -334,29 +352,3 @@ class Sentinel2(BaseImageAcquisitionService):
     def _filter_by_nodata_threshold(images: list, threshold: int) -> list:
         if not images: return []
         return [image for image in images if image.nodata_pixel_percentage < threshold]
-
-    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None) -> dict:
-        if not self.available_images:
-            if not area_of_interest:
-                raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
-            self.query_available_images(area_of_interest=area_of_interest, max_date=max_date, days_period=days_period)
-
-        available_tile_images = self.available_images.get(tile_name)
-        best_available_image = self._get_best_possile_images(
-            list_of_images=available_tile_images,
-            max_date=max_date,
-            days_period=days_period
-        )
-
-        if not best_available_image:
-            aprint(f'Não existe imagem disponível para o tile {tile_name}.', level=LogLevels.ERROR)
-            return {}
-
-        if not isinstance(best_available_image, list): best_available_image = [best_available_image]
-        [image.download_image(
-            image_database=self.images_database,
-            output_name=f'SNT2_{tile_name}'
-        ) for image in best_available_image]
-
-        # List of best images Instances (already downloaded)
-        return {'images':best_available_image, 'tile':tile_name}

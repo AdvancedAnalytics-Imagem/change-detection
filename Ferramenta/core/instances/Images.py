@@ -8,7 +8,8 @@ from datetime import date, datetime
 from xml.etree import ElementTree as ET
 
 from arcpy import (CreatePansharpenedRasterDataset_management, Describe,
-                   EnvManager, Exists, ProjectRaster_management, SpatialReference)
+                   EnvManager, Exists, ProjectRaster_management,
+                   SpatialReference)
 from arcpy.ia import ClassifyPixelsUsingDeepLearning
 from arcpy.management import (CompositeBands, CopyRaster, Delete,
                               MosaicToNewRaster)
@@ -17,13 +18,11 @@ from core._constants import *
 from core._logs import *
 from core.instances.Database import Database, wrap_on_database_editing
 from core.instances.MosaicDataset import MosaicDataset
-from core.libs.Base import (delete_source_files, load_path_and_name,
-                            prevent_server_error)
+from core.libs.Base import delete_source_files, prevent_server_error
 from core.libs.BaseDBPath import BaseDBPath
-from core.libs.BaseProperties import BaseProperties
+from core.libs.CustomExceptions import PansharpCustomException
 from core.ml_models.ImageClassifier import BaseImageClassifier
-from sentinelsat import (SentinelAPI, geojson_to_wkt, make_path_filter,
-                         read_geojson)
+from sentinelsat import make_path_filter
 from sentinelsat.exceptions import ServerError as SetinelServerError
 
 from .Feature import Feature
@@ -85,22 +84,25 @@ class CbersImage(BaseSateliteImage):
             os.makedirs(download_folder)
 
         if not self.exists:
-            aprint(f'Downloading image for tile {self.tileid}')
-            files = {
-                'pan_img': os.path.join(download_folder, f"p_{self.tileid}.tif"),
-                'red_img': os.path.join(download_folder, f"r_{self.tileid}.tif"),
-                'green_img': os.path.join(download_folder, f"g_{self.tileid}.tif"),
-                'blue_img': os.path.join(download_folder, f"b_{self.tileid}.tif"),
-                'nir_img': os.path.join(download_folder, f"n_{self.tileid}.tif")
-            }
-            self._download_worker(url=self.pan_url, filepath=files.get('pan_img'))
-            self._download_worker(url=self.red_url, filepath=files.get('red_img'))
-            self._download_worker(url=self.green_url, filepath=files.get('green_img'))
-            self._download_worker(url=self.blue_url, filepath=files.get('blue_img'))
-            self._download_worker(url=self.nir_url, filepath=files.get('nir_img'))
+            try:
+                aprint(f'        > Downloading image: | {self.tileid} |')
+                files = {
+                    'pan_img': os.path.join(download_folder, f"p_{self.tileid}.tif"),
+                    'red_img': os.path.join(download_folder, f"r_{self.tileid}.tif"),
+                    'green_img': os.path.join(download_folder, f"g_{self.tileid}.tif"),
+                    'blue_img': os.path.join(download_folder, f"b_{self.tileid}.tif"),
+                    'nir_img': os.path.join(download_folder, f"n_{self.tileid}.tif")
+                }
+                self._download_worker(url=self.pan_url, filepath=files.get('pan_img'))
+                self._download_worker(url=self.red_url, filepath=files.get('red_img'))
+                self._download_worker(url=self.green_url, filepath=files.get('green_img'))
+                self._download_worker(url=self.blue_url, filepath=files.get('blue_img'))
+                self._download_worker(url=self.nir_url, filepath=files.get('nir_img'))
 
-            self._compose_image(files=files, download_folder=download_folder)
-
+                self._compose_image(files=files, download_folder=download_folder)
+            except PansharpCustomException:
+                pass
+            
         self._erase_image_bands(download_folder)
 
 
@@ -118,17 +120,20 @@ class CbersImage(BaseSateliteImage):
 
     @wrap_on_database_editing
     def _pansharp_image(self, composed_img: str,  pan_img: str) -> None:
-        CreatePansharpenedRasterDataset_management(
-            in_raster=composed_img,
-            red_channel='1',
-            green_channel='2',
-            blue_channel='3',
-            infrared_channel='4',
-            out_raster_dataset=self.full_path,
-            in_panchromatic_image=pan_img,
-            pansharpening_type='Gram-Schmidt'
-        )
-        Delete(composed_img)
+        try:
+            CreatePansharpenedRasterDataset_management(
+                in_raster=composed_img,
+                red_channel='1',
+                green_channel='2',
+                blue_channel='3',
+                infrared_channel='4',
+                out_raster_dataset=self.full_path,
+                in_panchromatic_image=pan_img,
+                pansharpening_type='Gram-Schmidt'
+            )
+        except:
+            Delete(composed_img)
+            raise PansharpCustomException
     
     @prevent_server_error
     def _download_worker(self, url: str, filepath: str) -> None:
@@ -364,6 +369,9 @@ class Image(BaseDBPath):
     @delete_source_files
     @wrap_on_database_editing
     def stretch_image(self) -> str:
+        if self.sensor == 'CBERS':
+            return self.full_path
+        
         name = f'{self._stretch_prefix}{self.name}'
         if Exists(os.path.join(self.path, name)):
             self.name = name

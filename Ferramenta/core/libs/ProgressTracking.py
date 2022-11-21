@@ -34,7 +34,7 @@ class ProgressTracker:
             self._next_percentage += 1
             if self.estimated_completion_time < 0:
                 return
-            aprint(f"{self.name} |{self.progress}{self.remaining_progress}| Estimativa de conclusão: {self.estimated_completion_time_str}")
+            aprint(f" - {self.name}:\n    |{self.progress}{self.remaining_progress}| Estimativa de conclusão: {self.estimated_completion_time_str}")
     
     @property
     def remaining_progress(self) -> str:
@@ -52,7 +52,7 @@ class ProgressTracker:
 
     @property
     def estimated_completion_time_str(self):
-        return f'{self.estimated_completion_time:.2f} seconds'
+        return f'{self.estimated_completion_time/60:.2f} minutos'
 
     def estimate_completion_time(self) -> None:
         elapsed_time = datetime.now() - self._start_time
