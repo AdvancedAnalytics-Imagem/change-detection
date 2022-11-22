@@ -566,7 +566,7 @@ class Feature(BaseDBPath, CursorManager):
                 cursor.updateRow(values)
 
     def calculate_field(self, field_name: str, field_value: any = str, expression: str = None, code_block: str = None, expression_type: str = "PYTHON3", image_classifier: BaseImageClassifier = None):
-        aprint(f'Calculando campo {field_name}')
+        # aprint(f'Calculando campo {field_name}')
         if image_classifier is not None:
             self.look_for_missing_fields(fields={image_classifier.class_field:str})
             for classified_class in image_classifier.Classes:

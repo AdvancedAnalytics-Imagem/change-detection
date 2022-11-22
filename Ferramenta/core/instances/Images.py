@@ -85,7 +85,7 @@ class CbersImage(BaseSateliteImage):
 
         if not self.exists:
             try:
-                aprint(f'        > Downloading image: | {self.tileid} |')
+                aprint(f'        > Downloading image: | {self.tileid} | - {self.date}')
                 files = {
                     'pan_img': os.path.join(download_folder, f"p_{self.tileid}.tif"),
                     'red_img': os.path.join(download_folder, f"r_{self.tileid}.tif"),
@@ -133,7 +133,7 @@ class CbersImage(BaseSateliteImage):
             )
         except:
             Delete(composed_img)
-            raise PansharpCustomException
+            raise PansharpCustomException(tile=self.tileid)
     
     @prevent_server_error
     def _download_worker(self, url: str, filepath: str) -> None:

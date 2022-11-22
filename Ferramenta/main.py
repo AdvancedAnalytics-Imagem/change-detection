@@ -149,7 +149,7 @@ def classify_image(image: Image = None, ml_model: BaseImageClassifier = None):
     return classification
 
 def detect_changes(current, historic):
-    aprint(message='Detectando Mudanças Imagens', progress=True)
+    aprint(message='Detectando Mudanças', progress=True)
     change_detection = Feature(path=current.intersects(intersecting_feature=historic))
     change_detection.calculate_field(
         field_name="DIFF",

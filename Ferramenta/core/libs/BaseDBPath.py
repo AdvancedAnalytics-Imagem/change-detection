@@ -6,6 +6,7 @@ from core._constants import *
 from core._logs import *
 from core.instances.Database import Database, load_path_and_name
 from core.libs.BaseProperties import BaseProperties
+from core.libs.CustomExceptions import PathINMEMORY
 
 
 class BaseDBPath(BaseProperties):
@@ -39,4 +40,4 @@ class BaseDBPath(BaseProperties):
             if self.database:
                 self.path = self.database.full_path
         else:
-            aprint(f'IN_MEMORY path informado...', level=LogLevels.DEBUG)
+            PathINMEMORY(feature = name)

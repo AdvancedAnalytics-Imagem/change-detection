@@ -134,14 +134,12 @@ class DownloadSateliteImages:
         return new_image
 
 if __name__ == '__main__':
-    
     aprint(
-        message=f'''
-            \n1. Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
-            \n2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}
-            \n3. Arquivos baixados serão salvos em: {BASE_CONFIGS.download_storage}
-            \n4. Imagens finais serão salvas em: {BASE_CONFIGS.image_storage}
-        '''
+        message=f'''\n_ _________________ _\n
+    1. Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
+    2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}
+    3. Arquivos baixados serão salvos em: {BASE_CONFIGS.download_storage}
+    4. Imagens finais serão salvas em: {BASE_CONFIGS.image_storage}\n_ _________________ _\n'''
     )
 
     image = DownloadSateliteImages(variables=VARIABLES, configs=BASE_CONFIGS).get_image()

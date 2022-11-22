@@ -133,7 +133,7 @@ class ClassifyAndDetectChanges:
         return classification
 
     def detect_changes(self, current, historic):
-        aprint(message='Detectando Mudanças Imagens', progress=True)
+        aprint(message='Detectando Mudanças', progress=True)
         change_detection = Feature(path=current.intersects(intersecting_feature=historic))
         change_detection.calculate_field(
             field_name="DIFF",
@@ -157,11 +157,10 @@ class ClassifyAndDetectChanges:
 
 if __name__ == '__main__':
     aprint(
-        message=f'''
-            \n1. Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
-            \n2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}
-        '''
+        message=f'''\n_ _________________ _\n
+    1. Arquivos temporários serão salvos em: {BASE_CONFIGS.temp_dir}
+    2. GeoDatabase temporário: {BASE_CONFIGS.temp_db.full_path}\n_ _________________ _\n'''
     )
-
+    
     ClassifyAndDetectChanges(variables=VARIABLES, configs=BASE_CONFIGS).classify_and_detect_changes()
     BASE_CONFIGS.delete_temporary_content()

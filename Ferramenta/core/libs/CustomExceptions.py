@@ -9,16 +9,16 @@ class Error(Exception):
     interrupt_execution: bool = True
 
     """Base class for other exceptions"""
-    def __init__(self, message: str, log_level: LogLevels = None):
+    def __init__(self, message: str, log_level: LogLevels = None, display_message: str = True):
         if not log_level:
             log_level = LogLevels.INFO
 
         if self.interrupt_execution:
-            aprint(message, level=LogLevels.CRITICAL)
-            aprint('Interrompendo execução', level=LogLevels.WARNING)
+            aprint(message, level=LogLevels.CRITICAL, display_message=display_message)
+            aprint('Interrompendo execução', level=LogLevels.WARNING, display_message=display_message)
             sys.exit()
         else:
-            aprint(message, level=log_level)
+            aprint(message, level=log_level, display_message=display_message)
 
 class FolderAccessError(Error):
     """Exception for an unaccessible folder"""
@@ -157,9 +157,21 @@ class NoAvailableImageOnPeriod(Error):
 class PansharpCustomException(Error):
     interrupt_execution = False
     
+    def __init__(self, tile: str):
+        message = f'Não foi possível Executar o Pansharp do tile {tile}'
+        super().__init__(message)
+    
 class NoImageFoundForTile(Error):
-    interrupt_execution = False
+    interrupt_execution: bool  = False
     
     def __init__(self, tile: str):
         message = f'\n      > Imagem indisponível - Tile: {tile}'
         super().__init__(message, log_level=LogLevels.WARNING)
+        
+class PathINMEMORY(Error):
+    interrupt_execution: bool = False
+
+    def __init__(self, feature):
+        message = f'IN_MEMORY path informado para {feature}'
+        super().__init__(message)
+        
