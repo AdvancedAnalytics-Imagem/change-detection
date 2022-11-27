@@ -17,7 +17,8 @@ from core.libs.Base import prevent_server_error
 from core.libs.BaseProperties import BaseProperties
 from core.libs.CustomExceptions import (NoBaseTilesLayerFound,
                                         NoCbersCredentials,
-                                        NoImageFoundForTile)
+                                        NoImageFoundForTile,
+                                        PansharpCustomException)
 from core.ml_models.ImageClassifier import (BaseImageClassifier,
                                             CbersImageClassifier,
                                             Sentinel2ImageClassifier)
@@ -95,7 +96,7 @@ class BaseImageAcquisitionService(BaseProperties):
             images=available_tile_images,
             max_date=max_date,
             days_period=days_period)
-
+        
         if not best_available_images:
             NoImageFoundForTile(tile_name)
             return {}
@@ -110,6 +111,13 @@ class BaseImageAcquisitionService(BaseProperties):
 
         # List of best images Instances (already downloaded)
         return {'images':best_available_images, 'tile':tile_name}
+    
+    @staticmethod
+    def _sort_images_by_date(images):
+        images_dict = {i.date:i for i in images}
+        images_dict_keys = list(images_dict.keys())
+        images_dict_keys.sort(reverse=True)
+        return [images_dict.get(key) for key in images_dict_keys]
     
     def _get_most_recent_image(self, images: list, max_date: datetime = None, days_period: datetime = None) -> SentinelImage:
         if not images: return
@@ -198,6 +206,51 @@ class Cbers(BaseImageAcquisitionService):
             )
         return scenes
 
+    def get_best_available_images_for_tile(
+        self,
+        tile_name: str,
+        area_of_interest: Feature = None,
+        max_date: datetime = None,
+        days_period: int = None,
+        image_prefix: str = None
+    ) -> dict:
+        if not image_prefix:
+            image_prefix = f'{self.sensor[:2]}{self.sensor[-1]}'
+            
+        if not self.available_images:
+            if not area_of_interest:
+                raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
+            self.query_available_images(area_of_interest=area_of_interest, max_date=max_date, days_period=days_period)
+
+        available_tile_images = self.available_images.get(tile_name)
+        if not available_tile_images:
+            NoImageFoundForTile(tile_name)
+            return {}
+            
+        best_available_images = self._sort_images_by_date(images=available_tile_images)
+        
+        if not best_available_images:
+            NoImageFoundForTile(tile_name)
+            return {}
+
+        if not isinstance(best_available_images, list):
+            best_available_images = [best_available_images]
+
+        downloaded_images = []
+        for image in best_available_images:
+            try:
+                image.download_image(
+                    image_database=self.images_database,
+                    output_name=f'{image_prefix}_{tile_name}'
+                )
+                downloaded_images.append(image)
+                break
+            except PansharpCustomException:
+                continue
+
+        # List of best images Instances (already downloaded)
+        return {'images':downloaded_images, 'tile':tile_name}
+    
     def query_available_images(self, area_of_interest: Feature, max_date: datetime, days_period: int):
         if not max_date: max_date = self.today
         if not days_period: days_period = self._days_gap

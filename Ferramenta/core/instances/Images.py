@@ -83,30 +83,27 @@ class CbersImage(BaseSateliteImage):
         if not Exists(download_folder):
             os.makedirs(download_folder)
 
+        aprint(f'        > Downloading image: | {self.tileid} | - {self.date}')
         if not self.exists:
-            try:
-                aprint(f'        > Downloading image: | {self.tileid} | - {self.date}')
-                files = {
-                    'pan_img': os.path.join(download_folder, f"p_{self.tileid}.tif"),
-                    'red_img': os.path.join(download_folder, f"r_{self.tileid}.tif"),
-                    'green_img': os.path.join(download_folder, f"g_{self.tileid}.tif"),
-                    'blue_img': os.path.join(download_folder, f"b_{self.tileid}.tif"),
-                    'nir_img': os.path.join(download_folder, f"n_{self.tileid}.tif")
-                }
-                self._download_worker(url=self.pan_url, filepath=files.get('pan_img'))
-                self._download_worker(url=self.red_url, filepath=files.get('red_img'))
-                self._download_worker(url=self.green_url, filepath=files.get('green_img'))
-                self._download_worker(url=self.blue_url, filepath=files.get('blue_img'))
-                self._download_worker(url=self.nir_url, filepath=files.get('nir_img'))
+            files = {
+                'pan_img': os.path.join(download_folder, f"p_{self.tileid}.tif"),
+                'red_img': os.path.join(download_folder, f"r_{self.tileid}.tif"),
+                'green_img': os.path.join(download_folder, f"g_{self.tileid}.tif"),
+                'blue_img': os.path.join(download_folder, f"b_{self.tileid}.tif"),
+                'nir_img': os.path.join(download_folder, f"n_{self.tileid}.tif")
+            }
+            self._download_worker(url=self.pan_url, filepath=files.get('pan_img'))
+            self._download_worker(url=self.red_url, filepath=files.get('red_img'))
+            self._download_worker(url=self.green_url, filepath=files.get('green_img'))
+            self._download_worker(url=self.blue_url, filepath=files.get('blue_img'))
+            self._download_worker(url=self.nir_url, filepath=files.get('nir_img'))
 
-                self._compose_image(files=files, download_folder=download_folder)
-            except PansharpCustomException:
-                pass
+            self._compose_image(files=files, download_folder=download_folder)
             
         self._erase_image_bands(download_folder)
 
 
-    def _compose_image(self, files: {}, download_folder: str) -> None:
+    def _compose_image(self, files: dict, download_folder: str) -> None:
         composed_img = f"{download_folder}\\{self.tileid}_composed.tif"
         if not Exists(composed_img):
             filepaths = [
@@ -323,18 +320,28 @@ class Image(BaseDBPath):
         response = []
         for projection in projections:
             if projection != out_sr:
-                response.extend(self.project_image(images=projections.get(projection), out_sr=out_sr))
+                response.extend(
+                    self.project_image(
+                        images=projections.get(projection),
+                        out_sr=out_sr,
+                        in_memory=True
+                    )
+                )
                 continue
             response.extend(projections.get(projection))
 
         return response
 
-    def project_image(self, images: str = None, out_sr: int = None) -> list:
+    def project_image(self, images: str = None, out_sr: int = None, in_memory: bool = False) -> list:
         sr = SpatialReference(out_sr)
-
+        
+        path = self.temp_db.full_path
+        if in_memory:
+            path = 'IN_MEMORY'
+            
         response = []
         for image in images:
-            output_image = os.path.join(self.temp_db.full_path, f'temp_proj_{self.name}')
+            output_image = os.path.join(path, f'temp_proj_{self.name}')
             if not Exists(output_image):
                 ProjectRaster_management(
                     image,
