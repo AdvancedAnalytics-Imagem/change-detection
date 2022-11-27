@@ -377,12 +377,16 @@ class Sentinel2(BaseImageAcquisitionService):
         list_of_images_ordered_by_date = self.order_images_by_date(list_of_images)
         for image in list_of_images_ordered_by_date:
             image_coverage = 100 - image.nodata_pixel_percentage
-            if image_coverage > 97:
+
+            if image_coverage < 2: # Cobertura baixa demais para considerar a imagem
+                continue
+            
+            if image_coverage > 97: # Cobertura alta o suficiente para não precisar de outra imagem
                 return image
             
             response.append(image)
             coverage += image_coverage
-            if coverage > 170:
+            if coverage > 170: # Múltiplas images que recobrem o tile em 170% provavelmente compensam o no_data
                 return response
         
         return response
