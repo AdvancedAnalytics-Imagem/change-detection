@@ -73,7 +73,7 @@ class ImageAcquisition(BaseProperties):
 
         #* Historic Image acquisition
         historic_image_name = f'Hist_{self.today_str}'
-        min_search_date = self.current_image.date_created - timedelta(days=days_period)
+        min_search_date = max_date - timedelta(days=days_period)
         
         self.historic_image = self.get_composed_images_for_aoi(
             max_date=min_search_date,

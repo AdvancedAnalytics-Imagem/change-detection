@@ -336,12 +336,14 @@ class Image(BaseDBPath):
         sr = SpatialReference(out_sr)
         
         path = self.temp_db.full_path
+        name = f'temp_proj_{self.name}'
         if in_memory:
             path = 'IN_MEMORY'
+            name = f'prj{name[-6:]}'
             
         response = []
         for image in images:
-            output_image = os.path.join(path, f'temp_proj_{self.name}')
+            output_image = os.path.join(path, name)
             if not Exists(output_image):
                 ProjectRaster_management(
                     image,
