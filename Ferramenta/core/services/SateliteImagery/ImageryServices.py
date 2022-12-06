@@ -362,14 +362,7 @@ class Sentinel2(BaseImageAcquisitionService):
 
         return self.available_images
 
-def get_best_available_images_for_tile(
-        self,
-        tile_name:str,
-        area_of_interest: Feature = None,
-        max_date: datetime = None,
-        days_period: int = None,
-        image_prefix: str = None
-    ) -> dict:
+    def get_best_available_images_for_tile(self, tile_name:str, area_of_interest: Feature = None, max_date: datetime = None, days_period: int = None, image_prefix: str = None) -> dict:
         if not image_prefix:
             image_prefix = f'{self.sensor[:2]}{self.sensor[-1]}'
             
@@ -402,16 +395,7 @@ def get_best_available_images_for_tile(
         # List of best images Instances (already downloaded)
         return {'images':best_available_images, 'tile':tile_name}
     
-    def _get_best_possile_images_based_on_coverage(
-        self,
-        images: list,
-        min_coverage: int = 98,
-        combined_coverage: int = 170
-    ) -> list:
-        """Looks throught the identified images on the selected period for the current tile and isolates the best and most recent image based on a few rules
-            Returns:
-                list[Image] -> Most recent available Image instance,
-        """
+    def _get_best_possile_images_based_on_coverage(self, images: list, min_coverage: int = 98, combined_coverage: int = 170) -> list:
         response = []
         coverage = 0
         list_of_images_ordered_by_date = self._sort_images_by_date(images)
@@ -430,12 +414,3 @@ def get_best_available_images_for_tile(
                 return response
         
         return response
-
-    @staticmethod
-    def _filter_by_cloud_coverage(images: list, threshold: int) -> list:
-        return [image for image in images if image.cloud_coverage < threshold]
-
-    @staticmethod
-    def _filter_by_nodata_threshold(images: list, threshold: int) -> list:
-        if not images: return []
-        return [image for image in images if image.nodata_pixel_percentage < threshold]
