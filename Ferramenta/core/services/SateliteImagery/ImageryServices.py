@@ -113,7 +113,7 @@ class BaseImageAcquisitionService(BaseProperties):
         return {'images':best_available_images, 'tile':tile_name}
     
     @staticmethod
-    def _sort_images_by_date(images):
+    def _sort_images_by_date(images) -> list:
         images_dict = {i.date:i for i in images}
         images_dict_keys = list(images_dict.keys())
         images_dict_keys.sort(reverse=True)
@@ -362,44 +362,74 @@ class Sentinel2(BaseImageAcquisitionService):
 
         return self.available_images
 
-    def _get_best_possile_images(self, list_of_images: list, max_date: datetime = None, days_period: datetime = None) -> list:
+def get_best_available_images_for_tile(
+        self,
+        tile_name:str,
+        area_of_interest: Feature = None,
+        max_date: datetime = None,
+        days_period: int = None,
+        image_prefix: str = None
+    ) -> dict:
+        if not image_prefix:
+            image_prefix = f'{self.sensor[:2]}{self.sensor[-1]}'
+            
+        if not self.available_images:
+            if not area_of_interest:
+                raise ValidationError('Não existem imagens em memória, para busca-las é necessário informar uma area de interesse')
+            self.query_available_images(area_of_interest=area_of_interest, max_date=max_date, days_period=days_period)
+
+        available_tile_images = self.available_images.get(tile_name)
+        if not available_tile_images:
+            NoImageFoundForTile(tile_name)
+            return {}
+            
+        best_available_images = self._get_best_possile_images_based_on_coverage(
+            images=available_tile_images
+        )
+        
+        if not best_available_images:
+            NoImageFoundForTile(tile_name)
+            return {}
+
+        if not isinstance(best_available_images, list):
+            best_available_images = [best_available_images]
+
+        [image.download_image(
+            image_database=self.images_database,
+            output_name=f'{image_prefix}_{tile_name}'
+        ) for image in best_available_images]
+
+        # List of best images Instances (already downloaded)
+        return {'images':best_available_images, 'tile':tile_name}
+    
+    def _get_best_possile_images_based_on_coverage(
+        self,
+        images: list,
+        min_coverage: int = 98,
+        combined_coverage: int = 170
+    ) -> list:
         """Looks throught the identified images on the selected period for the current tile and isolates the best and most recent image based on a few rules
-            Args:
-                list_of_images (list): List of images identified for the current tile
-                tile (str): Tile name
-                max_date: Max date for an image (Optional)
-                days_period: Min date for an image (Optional)
             Returns:
-                Image -> Most recent available Image instance,
+                list[Image] -> Most recent available Image instance,
         """
         response = []
         coverage = 0
-        list_of_images_ordered_by_date = self.order_images_by_date(list_of_images)
+        list_of_images_ordered_by_date = self._sort_images_by_date(images)
         for image in list_of_images_ordered_by_date:
             image_coverage = 100 - image.nodata_pixel_percentage
 
             if image_coverage < 2: # Cobertura baixa demais para considerar a imagem
                 continue
             
-            if image_coverage > 97: # Cobertura alta o suficiente para não precisar de outra imagem
+            if image_coverage > min_coverage: # Cobertura alta o suficiente para não precisar de outra imagem
                 return image
             
             response.append(image)
             coverage += image_coverage
-            if coverage > 170: # Múltiplas images que recobrem o tile em 170% provavelmente compensam o no_data
+            if coverage > combined_coverage: # Múltiplas images que recobrem o tile em 170% provavelmente compensam o no_data
                 return response
         
         return response
-
-    def order_images_by_date(self, list_of_images: list) -> list:
-        images = {}
-        if not list_of_images:
-            return []
-        for image in list_of_images:
-            images[image.date] = image
-        dates = list(images.keys())
-        dates.sort(reverse=True)
-        return [images.get(k) for k in dates]
 
     @staticmethod
     def _filter_by_cloud_coverage(images: list, threshold: int) -> list:
